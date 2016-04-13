@@ -6,18 +6,43 @@ import (
 	"bytes"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
+	"gopkg.in/yaml.v2"
 )
 
 type Provider struct {
-	imageRepo string
-	imageTag  string
-	imageId   string
-	docker    *docker.Client
-	log       *log.Entry
-	slingshot *Slingshot
+	imageRepo    string
+	imageTag     string
+	imageId      string
+	providerType string
+	docker       *docker.Client
+	log          *log.Entry
+	slingshot    *Slingshot
+	config       ProviderConfig
 }
 
-func (p *Provider) initLog(name string) {
+type ProviderConfig struct {
+	Provider struct {
+		Version string
+		Type    string
+	}
+	Commands map[string]ProviderCommandConfig
+}
+
+type ProviderCommandConfig struct {
+	Output     string `yaml:"output"`
+	Type       string `yaml:"type"`
+	PwdContent string `yaml:"pwdContent"`
+}
+
+func (c *ProviderConfig) Parse(content string) error {
+
+	err := yaml.Unmarshal([]byte(content), c)
+
+	return err
+}
+
+func (p *Provider) init(name string) {
+	p.providerType = name
 	p.log = log.WithFields(log.Fields{
 		"context": name,
 	})
@@ -94,18 +119,16 @@ func (p *Provider) ImageName() string {
 	return fmt.Sprintf("%s:%s", p.imageRepo, p.imageTag)
 }
 
-func (p *Provider) discover() error {
+func (p *Provider) Execute(command []string) (stdOut string, stdErr string, exitCode int, err error) {
 
-	createOptions := docker.CreateContainerOptions{
+	container, err := p.docker.CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
 			Image: p.imageId,
-			Cmd:   []string{"discover"},
+			Cmd:   command,
 		},
-	}
-
-	container, err := p.docker.CreateContainer(createOptions)
+	})
 	if err != nil {
-		return err
+		return
 	}
 
 	// make sure container gets cleanup up in any case
@@ -116,14 +139,17 @@ func (p *Provider) discover() error {
 		})
 		if err != nil {
 			p.log.Warnf("cleanup of container failed")
+			return
 		}
+		p.log.Debugf("cleaned up container")
 	}()
 
+	// append container_id to log
 	p.log = p.log.WithField("container_id", container.ID[0:len(container.ID)-52])
 
 	err = p.docker.StartContainer(container.ID, &docker.HostConfig{})
 	if err != nil {
-		return err
+		return
 	}
 
 	var bufOut bytes.Buffer
@@ -139,22 +165,32 @@ func (p *Provider) discover() error {
 		ErrorStream:  &bufErr,
 	})
 	if err != nil {
-		return err
+		return
 	}
 
-	exitCode, err := p.docker.WaitContainer(container.ID)
+	exitCode, err = p.docker.WaitContainer(container.ID)
+	if err != nil {
+		return
+	}
+
+	err = nil
+	stdErr = bufErr.String()
+	stdOut = bufOut.String()
+
+	return
+}
+
+func (p *Provider) discover() error {
+
+	stdOut, stdErr, exitCode, err := p.Execute([]string{"discover"})
 	if err != nil {
 		return err
 	}
 	if exitCode != 0 {
-		return fmt.Errorf("Discover failed with exitcode=%d: %s", exitCode, bufErr.String())
+		return fmt.Errorf("Discover failed with exitcode=%d: %s", exitCode, stdErr)
 	}
 
-	p.log.Info("Out", bufOut.String())
-	p.log.Info("Err", bufErr.String())
-
-	return nil
-
+	return p.config.Parse(stdOut)
 }
 
 func (p *Provider) initImage(imageName string) (err error) {

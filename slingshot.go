@@ -12,7 +12,7 @@ type Slingshot struct {
 	configProvider         *ConfigProvider
 	log                    *log.Entry
 	providers              []string
-	dockerClient	       *docker.Client
+	dockerClient           *docker.Client
 }
 
 func NewSlingshot() *Slingshot {
@@ -23,11 +23,10 @@ func NewSlingshot() *Slingshot {
 		"context": "slingshot",
 	})
 
-
 	// register providers
 	s.providers = []string{
-		"infrastructure-provider",
-		"config-provider",
+		"infrastructure",
+		"config",
 	}
 
 	return s
@@ -57,18 +56,18 @@ func (s *Slingshot) newProvider(providerName string, imageName string) error {
 
 	var provider *Provider
 
-	if providerName == "infrastructure-provider" {
+	if providerName == "infrastructure" {
 		s.infrastructureProvider = &InfrastructureProvider{}
 		provider = &s.infrastructureProvider.Provider
 
-	} else if providerName == "config-provider" {
-		s.configProvider= &ConfigProvider{}
+	} else if providerName == "config" {
+		s.configProvider = &ConfigProvider{}
 		provider = &s.configProvider.Provider
 	} else {
 		return fmt.Errorf("provider '%s' not found", providerName)
 	}
 	provider.slingshot = s
-	provider.initLog(providerName)
+	provider.init(providerName)
 	return provider.initImage(imageName)
 }
 
@@ -77,7 +76,7 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 	errs := []error{}
 
 	for _, providerName := range s.providers {
-		imageName := context.String(providerName)
+		imageName := context.String(fmt.Sprintf("%s-provider", providerName))
 		err := s.newProvider(providerName, imageName)
 		if err != nil {
 			errs = append(errs, err)
