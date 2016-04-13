@@ -84,8 +84,11 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 	}
 
 	if len(errs) > 0 {
-
+		// TODO: You should error here
 	}
+
+	// run infrastructure apply
+	s.infrastructureProvider.RunCommand("apply")
 }
 
 func (s *Slingshot) unimplementedAction(context *cli.Context) {

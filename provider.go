@@ -1,21 +1,25 @@
 package main
 
 import (
-	"fmt"
-
 	"bytes"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/simonswine/slingshot/utils"
 	"gopkg.in/yaml.v2"
 )
 
 type Provider struct {
 	imageRepo    string
 	imageTag     string
-	imageId      string
+	imageId      *string
+	containerId  *string
 	providerType string
 	docker       *docker.Client
-	log          *log.Entry
 	slingshot    *Slingshot
 	config       ProviderConfig
 }
@@ -43,9 +47,86 @@ func (c *ProviderConfig) Parse(content string) error {
 
 func (p *Provider) init(name string) {
 	p.providerType = name
-	p.log = log.WithFields(log.Fields{
-		"context": name,
+
+}
+
+func (p *Provider) log() *log.Entry {
+
+	l := log.WithFields(log.Fields{
+		"context": fmt.Sprintf("%s-provider", p.providerType),
 	})
+
+	l = l.WithField("image", p.ImageName())
+
+	if p.imageId != nil {
+		s := *p.imageId
+		l = l.WithField("image_id", s[0:len(s)-52])
+	}
+
+	if p.containerId != nil {
+		s := *p.containerId
+		l = l.WithField("container_id", s[0:len(s)-52])
+	}
+
+	return l
+}
+
+func (p *Provider) RunCommand(commandName string) error {
+	p.log().Debugf("running command '%s'", commandName)
+
+	if commandDef, ok := p.config.Commands[commandName]; ok {
+		if commandDef.Type == "hostCommand" {
+			return p.runHostCommand(commandDef)
+		} else {
+			return fmt.Errorf("command type '%s' not found", commandDef.Type)
+		}
+
+	} else {
+		return fmt.Errorf("command '%s' not found", commandName)
+	}
+
+	return nil
+}
+
+func (p *Provider) runHostCommand(def ProviderCommandConfig) error {
+
+	oldWd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	dir, err := ioutil.TempDir("", AppName)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+
+	err = os.Chdir(dir)
+	if err != nil {
+		return err
+	}
+	defer os.Chdir(oldWd)
+
+	err = utils.UnTarGz([]byte(def.PwdContent), dir)
+
+	cmd := exec.Command("vagrant", "up")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err != nil {
+		return err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 func (p *Provider) pullImage() error {
@@ -75,29 +156,29 @@ func (p *Provider) getImage() (string, error) {
 
 	dockerClient, err := p.slingshot.Docker()
 	if err != nil {
-		p.log.Error(err)
+		p.log().Error(err)
 		return "", err
 	}
 	p.docker = dockerClient
 
 	list, err := p.listImages()
 	if err != nil {
-		p.log.Error(err)
+		p.log().Error(err)
 		return "", err
 	}
 
 	if len(list) == 0 {
-		p.log.Debugf("pulling image from registry")
+		p.log().Debugf("pulling image from registry")
 
 		err = p.pullImage()
 		if err != nil {
-			p.log.Error(err)
+			p.log().Error(err)
 			return "", err
 		}
 
 		list, err = p.listImages()
 		if err != nil {
-			p.log.Error(err)
+			p.log().Error(err)
 			return "", err
 		}
 
@@ -108,7 +189,7 @@ func (p *Provider) getImage() (string, error) {
 
 	} else {
 		err = fmt.Errorf("This should never happen: more than a one image found (%d)", len(list))
-		p.log.Error(err)
+		p.log().Error(err)
 		return "", err
 	}
 
@@ -123,10 +204,12 @@ func (p *Provider) Execute(command []string) (stdOut string, stdErr string, exit
 
 	container, err := p.docker.CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
-			Image: p.imageId,
+			Image: *p.imageId,
 			Cmd:   command,
 		},
 	})
+	p.containerId = &container.ID
+
 	if err != nil {
 		return
 	}
@@ -138,14 +221,12 @@ func (p *Provider) Execute(command []string) (stdOut string, stdErr string, exit
 			Force: true,
 		})
 		if err != nil {
-			p.log.Warnf("cleanup of container failed")
+			p.log().Warnf("cleanup of container failed")
 			return
 		}
-		p.log.Debugf("cleaned up container")
+		p.log().Debugf("cleaned up container")
+		p.containerId = nil
 	}()
-
-	// append container_id to log
-	p.log = p.log.WithField("container_id", container.ID[0:len(container.ID)-52])
 
 	err = p.docker.StartContainer(container.ID, &docker.HostConfig{})
 	if err != nil {
@@ -180,7 +261,7 @@ func (p *Provider) Execute(command []string) (stdOut string, stdErr string, exit
 	return
 }
 
-func (p *Provider) discover() error {
+func (p *Provider) readConfig() error {
 
 	stdOut, stdErr, exitCode, err := p.Execute([]string{"discover"})
 	if err != nil {
@@ -199,22 +280,20 @@ func (p *Provider) initImage(imageName string) (err error) {
 	if len(p.imageTag) == 0 {
 		p.imageTag = "latest"
 	}
-	// update logger
-	p.log = p.log.WithField("image", p.ImageName())
 
 	// get image
-	p.imageId, err = p.getImage()
+	imageId, err := p.getImage()
 	if err != nil {
-		p.log.Error(err)
+		p.log().Error(err)
 		return err
 	}
+	p.imageId = &imageId
 
-	p.log = p.log.WithField("image_id", p.imageId[0:len(p.imageId)-52])
-	p.log.Info("found image")
+	p.log().Info("found image")
 
-	err = p.discover()
+	err = p.readConfig()
 	if err != nil {
-		p.log.Error(err)
+		p.log().Error(err)
 		return err
 	}
 
