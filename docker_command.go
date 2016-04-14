@@ -6,20 +6,32 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
+var DockerSleepCommand = []string{"/bin/sleep", "3600"}
+var DockerDefaultEntrypoint = []string{"/bin/sh", "-c"}
+
 type DockerCommand struct {
 	BaseCommand
 	dockerClient *docker.Client
 	imageId      string
 	containerId  *string
-	stdIn        *io.PipeWriter
+}
+
+func (c *DockerCommand) entrypoint() []string {
+	inspect, err := c.dockerClient.InspectImage(c.imageId)
+	if err != nil {
+		c.log().Warn("failed to detect entrypoint falling back to default: ", err)
+		return DockerDefaultEntrypoint
+	}
+	return inspect.Config.Entrypoint
 }
 
 func (c *DockerCommand) Prepare() error {
 
 	container, err := c.dockerClient.CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
-			Image: c.imageId,
-			Cmd:   []string{"/bin/sleep", "3600"},
+			Image:      c.imageId,
+			Cmd:        DockerSleepCommand,
+			Entrypoint: []string{},
 		},
 	})
 	c.containerId = &container.ID
@@ -44,8 +56,12 @@ func (c *DockerCommand) CleanUp() {
 }
 
 func (c *DockerCommand) Exec(execCommand []string, stdout io.Writer, stderr io.Writer, stdin io.Reader) (exitCode int, err error) {
+	execIncludingEntrypoint := c.entrypoint()
+
+	execIncludingEntrypoint = append(execIncludingEntrypoint, execCommand...)
+
 	createOpts := docker.CreateExecOptions{
-		Cmd:       execCommand,
+		Cmd:       execIncludingEntrypoint,
 		Container: *c.containerId,
 	}
 	startOpts := docker.StartExecOptions{}
@@ -68,6 +84,7 @@ func (c *DockerCommand) Exec(execCommand []string, stdout io.Writer, stderr io.W
 		return
 	}
 
+	c.log().WithField("command", execIncludingEntrypoint).Debugf("run command")
 	err = c.dockerClient.StartExec(
 		execDocker.ID,
 		startOpts,

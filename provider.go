@@ -165,7 +165,7 @@ func (p *Provider) readConfig() error {
 		return err
 	}
 	if exitCode != 0 {
-		return fmt.Errorf("Discover failed with exitcode=%d: %s", exitCode, stdErr)
+		return fmt.Errorf("discover failed with exitcode=%d: %s", exitCode, stdErr)
 	}
 
 	return p.config.Parse(stdOut)
