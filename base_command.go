@@ -11,9 +11,16 @@ type BaseCommand struct {
 }
 
 func (c *BaseCommand) log() *log.Entry {
+	commandType := "unknown"
+
+	if c.config != nil {
+		commandType = c.config.Type
+	}
+
 	l := log.WithFields(log.Fields{
-		"context": fmt.Sprintf("%s-command", c.config.Type),
+		"context": fmt.Sprintf("%s-command", commandType),
 	})
+
 	return l
 }
 

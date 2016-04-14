@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func prepareCommand(t *testing.T) *Command {
+func prepareDockerCommand(t *testing.T) *Command {
 	dockerClient, err := docker.NewClientFromEnv()
 	if err != nil {
 		t.Skip("No docker available")
@@ -28,7 +28,7 @@ func prepareCommand(t *testing.T) *Command {
 }
 
 func TestDockerCommandExecuteSucceedStdout(t *testing.T) {
-	c := prepareCommand(t)
+	c := prepareDockerCommand(t)
 
 	stdout, stderr, exitCode, err := c.Execute([]string{"echo", "test"})
 
@@ -39,7 +39,7 @@ func TestDockerCommandExecuteSucceedStdout(t *testing.T) {
 }
 
 func TestDockerCommandExecuteFailStderr(t *testing.T) {
-	c := prepareCommand(t)
+	c := prepareDockerCommand(t)
 
 	stdout, stderr, exitCode, err := c.Execute([]string{"ls", "/notexisting"})
 

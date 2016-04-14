@@ -1,12 +1,13 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"syscall"
 
 	"github.com/simonswine/slingshot/utils"
-	"io"
 )
 
 type HostCommand struct {
@@ -31,6 +32,11 @@ func (c *HostCommand) Prepare() error {
 	err = os.Chdir(*c.tempWorkDir)
 	if err != nil {
 		return err
+	}
+
+	// skip untar if not existing
+	if c.config == nil || len(c.config.WorkingDirContent) == 0 {
+		return nil
 	}
 
 	return utils.UnTarGz([]byte(c.config.WorkingDirContent), *c.tempWorkDir)
@@ -74,9 +80,16 @@ func (c *HostCommand) Exec(execSingle []string, stdout io.Writer, stderr io.Writ
 
 	err = cmd.Wait()
 	if err != nil {
-		return
+
+		// detect right exitCode
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			//err = nil
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				err = nil
+				exitCode = status.ExitStatus()
+			}
+		}
 	}
 
-	// TODO: please fix exit code detection here
-	return 0, err
+	return
 }
