@@ -1,15 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/simonswine/slingshot/utils"
 	"gopkg.in/yaml.v2"
 )
 
@@ -29,13 +24,7 @@ type ProviderConfig struct {
 		Version string
 		Type    string
 	}
-	Commands map[string]ProviderCommandConfig
-}
-
-type ProviderCommandConfig struct {
-	Output     string `yaml:"output"`
-	Type       string `yaml:"type"`
-	PwdContent string `yaml:"pwdContent"`
+	Commands map[string]CommandConfig
 }
 
 func (c *ProviderConfig) Parse(content string) error {
@@ -75,58 +64,17 @@ func (p *Provider) RunCommand(commandName string) error {
 	p.log().Debugf("running command '%s'", commandName)
 
 	if commandDef, ok := p.config.Commands[commandName]; ok {
-		if commandDef.Type == "hostCommand" {
-			return p.runHostCommand(commandDef)
-		} else {
-			return fmt.Errorf("command type '%s' not found", commandDef.Type)
+		c, err := NewCommand(&commandDef, p)
+		if err != nil {
+			return err
 		}
+		return c.Run()
 
 	} else {
 		return fmt.Errorf("command '%s' not found", commandName)
 	}
 
 	return nil
-}
-
-func (p *Provider) runHostCommand(def ProviderCommandConfig) error {
-
-	oldWd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	dir, err := ioutil.TempDir("", AppName)
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(dir)
-
-	err = os.Chdir(dir)
-	if err != nil {
-		return err
-	}
-	defer os.Chdir(oldWd)
-
-	err = utils.UnTarGz([]byte(def.PwdContent), dir)
-
-	cmd := exec.Command("vagrant", "up")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err != nil {
-		return err
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-
-	return err
 }
 
 func (p *Provider) pullImage() error {
@@ -200,70 +148,19 @@ func (p *Provider) ImageName() string {
 	return fmt.Sprintf("%s:%s", p.imageRepo, p.imageTag)
 }
 
-func (p *Provider) Execute(command []string) (stdOut string, stdErr string, exitCode int, err error) {
-
-	container, err := p.docker.CreateContainer(docker.CreateContainerOptions{
-		Config: &docker.Config{
-			Image: *p.imageId,
-			Cmd:   command,
-		},
-	})
-	p.containerId = &container.ID
-
-	if err != nil {
-		return
-	}
-
-	// make sure container gets cleanup up in any case
-	defer func() {
-		err = p.docker.RemoveContainer(docker.RemoveContainerOptions{
-			ID:    container.ID,
-			Force: true,
-		})
-		if err != nil {
-			p.log().Warnf("cleanup of container failed")
-			return
-		}
-		p.log().Debugf("cleaned up container")
-		p.containerId = nil
-	}()
-
-	err = p.docker.StartContainer(container.ID, &docker.HostConfig{})
-	if err != nil {
-		return
-	}
-
-	var bufOut bytes.Buffer
-	var bufErr bytes.Buffer
-
-	err = p.docker.AttachToContainer(docker.AttachToContainerOptions{
-		Container:    container.ID,
-		Stderr:       true,
-		Stdout:       true,
-		Stream:       true,
-		Logs:         true,
-		OutputStream: &bufOut,
-		ErrorStream:  &bufErr,
-	})
-	if err != nil {
-		return
-	}
-
-	exitCode, err = p.docker.WaitContainer(container.ID)
-	if err != nil {
-		return
-	}
-
-	err = nil
-	stdErr = bufErr.String()
-	stdOut = bufOut.String()
-
-	return
-}
-
 func (p *Provider) readConfig() error {
 
-	stdOut, stdErr, exitCode, err := p.Execute([]string{"discover"})
+	c, err := NewCommand(
+		&CommandConfig{
+			Type: "docker",
+		},
+		p,
+	)
+	if err != nil {
+		return err
+	}
+
+	stdOut, stdErr, exitCode, err := c.Execute([]string{"discover"})
 	if err != nil {
 		return err
 	}
