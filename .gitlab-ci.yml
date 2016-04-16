@@ -1,10 +1,12 @@
 before_script:
-  - go get github.com/tools/godep
+  - make depend
 build:
   script:
     - mkdir -p Godeps/_workspace/src/github.com/simonswine
     - ln -s $(pwd) Godeps/_workspace/src/github.com/simonswine/slingshot
-    - godep go build
-    - godep go test -cover
+    - make all
   tags:
     - golang
+  artifacts:
+    paths:
+      - _build/

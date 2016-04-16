@@ -1,2 +1,4 @@
 slingshot
 .idea/
+_build/
+_test/
