@@ -5,9 +5,15 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"
+	"os"
 )
 
 func prepareDockerCommand(t *testing.T) *Command {
+	// TODO: fix tests fail if the image is not available locally
+	if len(os.Getenv("DOCKER_ENABLE")) == 0 {
+		t.Skip("Skipping docker integration tests: Set environment DOCKER_ENABLE=true to enable")
+	}
+
 	dockerClient, err := docker.NewClientFromEnv()
 	if err != nil {
 		t.Skip("No docker available")
