@@ -43,8 +43,8 @@ docker:
 
 	# copy artifacts over
 	rm -rf $(BUILD_DIR)/ $(TEST_DIR)/
-	docker cp $(CONTAINER_ID):$(CONTAINER_DIR)/$(BUILD_DIR)/ $(BUILD_DIR)/
-	docker cp $(CONTAINER_ID):$(CONTAINER_DIR)/$(TEST_DIR)/ $(TEST_DIR)/
+	docker cp $(CONTAINER_ID):$(CONTAINER_DIR)/$(BUILD_DIR)/ .
+	docker cp $(CONTAINER_ID):$(CONTAINER_DIR)/$(TEST_DIR)/ .
 
 	# remove container
 	docker rm $(CONTAINER_ID)
