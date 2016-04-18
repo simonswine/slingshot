@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/simonswine/slingshot/utils"
 )
+
 
 type Slingshot struct {
 	infrastructureProvider *InfrastructureProvider
@@ -71,12 +75,42 @@ func (s *Slingshot) newProvider(providerName string, imageName string) error {
 	return provider.initImage(imageName)
 }
 
+func (s *Slingshot) readFile(path string) (string, error) {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(content), err
+}
+
 func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 
 	errs := []error{}
 
+	p := &Parameters{}
+	p.Defaults()
+
+	sshKeyPath := utils.VagrantKeyPath()
+	if context.IsSet("ssh-key") {
+		sshKeyPath = context.String("ssh-key")
+	}
+	sshKey, err := s.readFile(sshKeyPath)
+	if err != nil {
+		log.Errorf("Error while reading ssh key from '%s':  %s", sshKeyPath, err)
+	}
+	p.General.Authentication.Ssh.PrivateKey = &sshKey
+
+
+	errs =  p.Validate()
+
 	for _, providerName := range s.providers {
-		imageName := context.String(fmt.Sprintf("%s-provider", providerName))
+		flagName := fmt.Sprintf("%s-provider", providerName)
+		imageName := context.String(flagName)
+		if len(imageName) == 0 {
+			errs = append(errs, fmt.Errorf("No value for '--%s' provided", flagName))
+			continue
+		}
+
 		err := s.newProvider(providerName, imageName)
 		if err != nil {
 			errs = append(errs, err)
@@ -84,11 +118,14 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 	}
 
 	if len(errs) > 0 {
-		// TODO: You should error here
+		for _, err := range errs {
+			log.Error(err)
+		}
+		return
 	}
 
 	// run infrastructure apply
-	s.infrastructureProvider.RunCommand("apply")
+	//s.infrastructureProvider.RunCommand("apply")
 }
 
 func (s *Slingshot) unimplementedAction(context *cli.Context) {
@@ -109,6 +146,13 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 				cli.StringFlag{
 					Name:  "config-provider, C",
 					Usage: "Image name of the config provider to use",
+				},
+				cli.StringFlag{
+					Name:  "ssh-key, i",
+					Usage: fmt.Sprintf(
+						"SSH private key to use (please provide an uncrypted key, default: %s)",
+						utils.VagrantKeyPath(),
+					),
 				},
 			},
 		},
