@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/simonswine/slingshot",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.6.1",
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -28,6 +28,14 @@
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Comment": "v1.0-88-ge3a8ff8",
 			"Rev": "e3a8ff8ce36581f87a15341206f205b1da467059"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "5dc8cb4b8a8eb076cbb5a06bc3b8682c15bdbbd3"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "5dc8cb4b8a8eb076cbb5a06bc3b8682c15bdbbd3"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
