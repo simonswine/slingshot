@@ -1,0 +1,26 @@
+# this represents the default parameters
+general:
+  authentication:
+    ssh:
+      user: root
+  cluster:
+    kubernetes:
+      masterApiPort: 443
+      mastersCount: 1
+      workersCount: 2
+      serviceNetwork: 10.245.0.0/16
+      dns:
+        replicas: 1
+        domainName: cluster.local
+      networking: flannel
+      flannel:
+        subnet: 172.16.0.0
+        prefix: 16
+        hostPrefix: 24
+      addons:
+        clusterLogging: false
+        clusterMonitoring: false
+        kubeUI: false
+        kubeDash: false
+inventory: []
+
