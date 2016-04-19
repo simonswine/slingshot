@@ -41,8 +41,8 @@ commands:
 
 	assert.Equal(t, [][]string{[]string{"vagrant", "up"}}, c.Commands["apply"].Execs)
 	assert.Equal(t, "host", c.Commands["apply"].Type)
-	assert.Equal(t, "params.yaml", c.Commands["apply"].ParameterFile)
-	assert.Equal(t, "output.yaml", c.Commands["apply"].ResultFile)
+	assert.Equal(t, "params.yaml", *c.Commands["apply"].ParameterFile)
+	assert.Equal(t, "output.yaml", *c.Commands["apply"].ResultFile)
 	assert.Equal(t, []string{".vagrant/"}, c.Commands["apply"].PersistPaths)
 	assert.Equal(
 		t,

@@ -23,6 +23,7 @@ func (p *Parameters) Parse(content string) error {
 }
 
 func (p *Parameters) Validate() (errs []error) {
+	errs = append(errs, p.General.Validate()...)
 	errs = append(errs, p.validateInventory()...)
 	return
 }

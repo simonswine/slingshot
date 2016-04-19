@@ -7,9 +7,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/simonswine/slingshot/Godeps/_workspace/src/gopkg.in/yaml.v2"
 	"github.com/simonswine/slingshot/utils"
 )
-
 
 type Slingshot struct {
 	infrastructureProvider *InfrastructureProvider
@@ -87,8 +87,8 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 
 	errs := []error{}
 
-	p := &Parameters{}
-	p.Defaults()
+	paramsMain := &Parameters{}
+	paramsMain.Defaults()
 
 	sshKeyPath := utils.VagrantKeyPath()
 	if context.IsSet("ssh-key") {
@@ -98,10 +98,9 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 	if err != nil {
 		log.Errorf("Error while reading ssh key from '%s':  %s", sshKeyPath, err)
 	}
-	p.General.Authentication.Ssh.PrivateKey = &sshKey
+	paramsMain.General.Authentication.Ssh.PrivateKey = &sshKey
 
-
-	errs =  p.Validate()
+	errs = paramsMain.Validate()
 
 	for _, providerName := range s.providers {
 		flagName := fmt.Sprintf("%s-provider", providerName)
@@ -121,11 +120,43 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 		for _, err := range errs {
 			log.Error(err)
 		}
-		return
+		log.Fatal("Errors prevent further execution")
 	}
 
 	// run infrastructure apply
-	//s.infrastructureProvider.RunCommand("apply")
+	paramsMainBytes, err := yaml.Marshal(paramsMain)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Debugf("params for infra:\n%s", paramsMainBytes)
+
+	output, err := s.infrastructureProvider.RunCommand("apply", &paramsMainBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// check and merge output from infrastructure apply
+	paramsMain.Parse(string(output))
+	errs = paramsMain.validateInventory()
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Error(err)
+		}
+		log.Fatal("Errors prevent further execution")
+	}
+
+	// run config apply
+	paramsMainBytes, err = yaml.Marshal(paramsMain)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Debugf("params after merge with output from infra:\n%s", paramsMainBytes)
+
+	output, err = s.configProvider.RunCommand("apply", &paramsMainBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func (s *Slingshot) unimplementedAction(context *cli.Context) {
@@ -148,7 +179,7 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 					Usage: "Image name of the config provider to use",
 				},
 				cli.StringFlag{
-					Name:  "ssh-key, i",
+					Name: "ssh-key, i",
 					Usage: fmt.Sprintf(
 						"SSH private key to use (please provide an uncrypted key, default: %s)",
 						utils.VagrantKeyPath(),

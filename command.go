@@ -9,14 +9,15 @@ import (
 
 type CommandInterface interface {
 	Exec(command []string, stdout io.Writer, stderr io.Writer, stdin io.Reader) (exitCode int, err error)
-	Prepare() error
+	Prepare(*[]byte) error
+	Output() ([]byte, error)
 	CleanUp()
 	Config() *CommandConfig
 }
 
 type CommandConfig struct {
-	ParameterFile     string     `yaml:"parameterFile"`
-	ResultFile        string     `yaml:"resultFile"`
+	ParameterFile     *string    `yaml:"parameterFile"`
+	ResultFile        *string    `yaml:"resultFile"`
 	PersistPaths      []string   `yaml:"persistPaths"`
 	Type              string     `yaml:"type"`
 	WorkingDirContent string     `yaml:"workingDirContent"`
@@ -57,7 +58,7 @@ func (c *Command) Init(config *CommandConfig, p *Provider) error {
 }
 
 func (c *Command) Execute(command []string) (stdOut string, stdErr string, exitCode int, err error) {
-	err = c.commandImplementation.Prepare()
+	err = c.commandImplementation.Prepare(nil)
 	if err != nil {
 		return
 	}
@@ -77,19 +78,19 @@ func (c *Command) Execute(command []string) (stdOut string, stdErr string, exitC
 	return
 }
 
-func (c *Command) Run() error {
-	err := c.commandImplementation.Prepare()
+func (c *Command) Run(parameters *[]byte) (output []byte, err error) {
+	err = c.commandImplementation.Prepare(parameters)
 	if err != nil {
-		return err
+		return
 	}
 	defer c.commandImplementation.CleanUp()
 
 	for _, execSingle := range c.commandImplementation.Config().Execs {
-		_, err := c.commandImplementation.Exec(execSingle, os.Stdout, os.Stderr, nil)
+		_, err = c.commandImplementation.Exec(execSingle, os.Stdout, os.Stderr, nil)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
-	return nil
+	return c.commandImplementation.Output()
 }

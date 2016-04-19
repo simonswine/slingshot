@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"syscall"
 
 	"github.com/simonswine/slingshot/utils"
@@ -16,7 +17,7 @@ type HostCommand struct {
 	tempWorkDir *string
 }
 
-func (c *HostCommand) Prepare() error {
+func (c *HostCommand) Prepare(parameters *[]byte) error {
 	oldWorkDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -34,12 +35,32 @@ func (c *HostCommand) Prepare() error {
 		return err
 	}
 
-	// skip untar if not existing
-	if c.config == nil || len(c.config.WorkingDirContent) == 0 {
-		return nil
+	// untar work dir if needed
+	if c.config != nil && len(c.config.WorkingDirContent) != 0 {
+		err = utils.UnTarGz([]byte(c.config.WorkingDirContent), *c.tempWorkDir)
+		if err != nil {
+			return err
+		}
 	}
 
-	return utils.UnTarGz([]byte(c.config.WorkingDirContent), *c.tempWorkDir)
+	// write parameter file if needed
+	if c.config != nil && c.config.ParameterFile != nil && parameters != nil {
+		filePath := path.Join(
+			*c.tempWorkDir,
+			*c.config.ParameterFile,
+		)
+		err = ioutil.WriteFile(
+			filePath,
+			[]byte(*parameters),
+			0644,
+		)
+		if err != nil {
+			return err
+		}
+		c.log().Debugf("wrote parameters file to '%s'", filePath)
+	}
+
+	return nil
 }
 
 func (c *HostCommand) CleanUp() {
@@ -91,5 +112,17 @@ func (c *HostCommand) Exec(execSingle []string, stdout io.Writer, stderr io.Writ
 		}
 	}
 
+	return
+}
+
+func (c *HostCommand) Output() (output []byte, err error) {
+	if c.config != nil && c.config.ResultFile != nil && c.tempWorkDir != nil {
+		filePath := path.Join(
+			*c.tempWorkDir,
+			*c.config.ResultFile,
+		)
+		c.log().Debugf("Read output from file '%s'", filePath)
+		return ioutil.ReadFile(filePath)
+	}
 	return
 }

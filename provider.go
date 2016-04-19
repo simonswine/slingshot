@@ -60,21 +60,23 @@ func (p *Provider) log() *log.Entry {
 	return l
 }
 
-func (p *Provider) RunCommand(commandName string) error {
+func (p *Provider) RunCommand(commandName string, parameters *[]byte) (output []byte, err error) {
 	p.log().Debugf("running command '%s'", commandName)
 
 	if commandDef, ok := p.config.Commands[commandName]; ok {
-		c, err := NewCommand(&commandDef, p)
-		if err != nil {
-			return err
+		c, errCmd := NewCommand(&commandDef, p)
+		if errCmd != nil {
+			err = errCmd
+			return
 		}
-		return c.Run()
+		return c.Run(parameters)
 
 	} else {
-		return fmt.Errorf("command '%s' not found", commandName)
+		err = fmt.Errorf("command '%s' not found", commandName)
+		return
 	}
 
-	return nil
+	return
 }
 
 func (p *Provider) pullImage() error {

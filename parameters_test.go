@@ -32,7 +32,7 @@ func TestParametersInventory(t *testing.T) {
 	assert.Equal(t, 2, len(p.Inventory))
 }
 
-func TestParametersCluster(t *testing.T){
+func TestParametersCluster(t *testing.T) {
 	yamlContent := `cluster:
   kubernetes:
     interface: eth1
@@ -64,7 +64,7 @@ func TestParametersCluster(t *testing.T){
 	// ensure no validation erros
 	assert.Equal(t, []error(nil), valErrs)
 
-	assert.Equal(t, "eth1",*p.Cluster.Kubernetes.Interface)
+	assert.Equal(t, "eth1", *p.Cluster.Kubernetes.Interface)
 	assert.Equal(t, 8443, p.Cluster.Kubernetes.MasterApiPort)
 	assert.Equal(t, 2, p.Cluster.Kubernetes.MastersCount)
 	assert.Equal(t, 1, p.Cluster.Kubernetes.WorkersCount)
