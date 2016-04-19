@@ -53,7 +53,10 @@ func (c *Cluster) newProvider(providerName string, imageName string) error {
 }
 
 func (c *Cluster) log() *log.Entry {
-	return log.WithField("cluster_name", c.Name)
+	return log.WithFields(log.Fields{
+		"cluster_name": c.Name,
+		"context":      "slingshot",
+	})
 }
 
 func (c *Cluster) createParameters(context *cli.Context) []error {
