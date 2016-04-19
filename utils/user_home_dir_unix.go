@@ -5,7 +5,6 @@ package utils
 import (
 	"bytes"
 	"errors"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -14,7 +13,6 @@ import (
 func UserHomeDir() (string, error) {
 	// First prefer the HOME environmental variable
 	if home := os.Getenv("HOME"); home != "" {
-		log.Printf("[DEBUG] Detected home directory from env var: %s", home)
 		return home, nil
 	}
 
