@@ -16,7 +16,7 @@ test: depend
 	godep go test -coverprofile=${TEST_DIR}/cover.out
 	godep go test -coverprofile=${TEST_DIR}/cover.utils.out ./utils
 	go tool cover -html=${TEST_DIR}/cover.out -o ${TEST_DIR}/coverage.html
-	#go tool cover -html=${TEST_DIR}/cover.utils.out -o ${TEST_DIR}/coverage.utils.html
+	go tool cover -html=${TEST_DIR}/cover.utils.out -o ${TEST_DIR}/coverage.utils.html
 
 build: depend
 	mkdir -p ${BUILD_DIR}
