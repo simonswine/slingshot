@@ -6,10 +6,16 @@ APP_NAME=slingshot
 BUILD_DIR=_build
 TEST_DIR=_test
 
+SYMLINK_DEST=Godeps/_workspace/src/$(PACKAGE_NAME)
+
 CONTAINER_DIR=/go/src/${PACKAGE_NAME}
 
 depend:
 	which godep || go get github.com/tools/godep
+	$(shell mkdir -p `dirname $(SYMLINK_DEST)`)
+	rm -f $(SYMLINK_DEST)
+	ln -s ../../../../../ $(SYMLINK_DEST)
+
 
 test: depend
 	mkdir -p ${TEST_DIR}
