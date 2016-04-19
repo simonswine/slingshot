@@ -90,7 +90,10 @@ func (s *Slingshot) clusterCreateAction(context *cli.Context) {
 	paramsMain := &Parameters{}
 	paramsMain.Defaults()
 
-	sshKeyPath := utils.VagrantKeyPath()
+	sshKeyPath, err := utils.VagrantKeyPath()
+	if err != nil {
+		log.Fatal("Error while determining vagrant ssh key path: ", err)
+	}
 	if context.IsSet("ssh-key") {
 		sshKeyPath = context.String("ssh-key")
 	}
@@ -179,11 +182,8 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 					Usage: "Image name of the config provider to use",
 				},
 				cli.StringFlag{
-					Name: "ssh-key, i",
-					Usage: fmt.Sprintf(
-						"SSH private key to use (please provide an uncrypted key, default: %s)",
-						utils.VagrantKeyPath(),
-					),
+					Name:  "ssh-key, i",
+					Usage: "SSH private key to use (please provide an uncrypted key, default: vagrant insecure key)",
 				},
 			},
 		},

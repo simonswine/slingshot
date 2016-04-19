@@ -1,22 +1,21 @@
 package utils
 
 import (
-	"os"
-	"runtime"
 	"path"
 )
 
-func UserHomeDir() string {
-	if runtime.GOOS == "windows" {
-		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
-		if home == "" {
-			home = os.Getenv("USERPROFILE")
-		}
-		return home
+func SlinshotConfigDirPath() (string, error) {
+	homeDir, err := UserHomeDir()
+	if err != nil {
+		return "", err
 	}
-	return os.Getenv("HOME")
+	return path.Join(homeDir, ".slingshot"), nil
 }
 
-func VagrantKeyPath() string {
-	return path.Join(UserHomeDir(), ".vagrant.d/insecure_private_key")
+func VagrantKeyPath() (string, error) {
+	homeDir, err := UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return path.Join(homeDir, ".vagrant.d/insecure_private_key"), nil
 }
