@@ -2,9 +2,12 @@ before_script:
   - make depend
 build:
   script:
-    - mkdir -p Godeps/_workspace/src/github.com/simonswine
-    - ln -s $(pwd) Godeps/_workspace/src/github.com/simonswine/slingshot
-    - make all
+    - rm -rf /go/src/github.com/simonswine
+    - mkdir -p /go/src/github.com/simonswine
+    - mv ${CI_PROJECT_DIR} /go/src/github.com/simonswine
+    - cd /go/src/github.com/simonswine/slingshot
+    - make build_all
+    - mv /go/src/github.com/simonswine/slingshot ${CI_PROJECT_DIR} 
   tags:
     - golang
   artifacts:
