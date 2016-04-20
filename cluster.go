@@ -8,15 +8,18 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/simonswine/slingshot/utils"
 	"gopkg.in/yaml.v2"
+	"path"
+	"regexp"
+	"strings"
 )
 
 type Cluster struct {
 	Name                   string
-	parameters             *Parameters
+	Parameters             *Parameters        `yaml:"parameters"`
+	ProviderImageNames     map[string]*string `yaml:"providerImageNames`
 	infrastructureProvider *InfrastructureProvider
 	configProvider         *ConfigProvider
 	slingshot              *Slingshot
-	providers              []string
 }
 
 func NewCluster(slingshot *Slingshot) *Cluster {
@@ -24,13 +27,30 @@ func NewCluster(slingshot *Slingshot) *Cluster {
 		slingshot: slingshot,
 	}
 
-	// register providers
-	c.providers = []string{
-		"infrastructure",
-		"config",
+	// initialize map
+	c.ProviderImageNames = map[string]*string{
+		"infrastructure": nil,
+		"config":         nil,
 	}
 
 	return c
+}
+
+func LoadClusterFromPath(slingshot *Slingshot, filePath string) (*Cluster, error) {
+
+	yamlData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	c := NewCluster(slingshot)
+
+	if err = yaml.Unmarshal(yamlData, c); err != nil {
+		return nil, err
+	}
+
+	// TODO init providers
+	return c, nil
 }
 
 func (c *Cluster) newProvider(providerName string, imageName string) error {
@@ -50,6 +70,64 @@ func (c *Cluster) newProvider(providerName string, imageName string) error {
 	provider.slingshot = c.slingshot
 	provider.init(providerName)
 	return provider.initImage(imageName)
+}
+
+func (c *Cluster) Validate() (errs []error) {
+	errs = append(errs, c.validateName()...)
+	return
+}
+
+func (c *Cluster) validateName() (errs []error) {
+	// lowercase name
+	c.Name = strings.ToLower(c.Name)
+
+	if len(c.Name) == 0 {
+		return []error{fmt.Errorf("empty cluster name not allowed")}
+	}
+
+	regExpName := "[a-z0-9-]+"
+	matched, err := regexp.MatchString(regExpName, c.Name)
+	if err != nil {
+		return []error{err}
+	}
+	if !matched {
+		return []error{fmt.Errorf("cluster name '%s' did not match '%s'", c.Name, regExpName)}
+	}
+	return []error{}
+}
+
+func (c *Cluster) configDirPath() string {
+	return path.Join(
+		c.slingshot.configDir,
+		c.Name,
+	)
+}
+
+func (c *Cluster) configFilePath() string {
+	return path.Join(
+		c.configDirPath(),
+		SlingshotClusterFileName,
+	)
+}
+
+func (c *Cluster) WriteConfig() error {
+	if err := utils.EnsureDirectory(c.configDirPath()); err != nil {
+		return err
+	}
+
+	yamlContents, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	ioutil.WriteFile(c.configFilePath(), yamlContents, 0600)
+	if err != nil {
+		return err
+	}
+
+	c.log().Infof("wrote cluster config to '%s'", c.configFilePath())
+
+	return nil
 }
 
 func (c *Cluster) log() *log.Entry {
@@ -83,26 +161,29 @@ func (c *Cluster) createParameters(context *cli.Context) []error {
 	paramsMain.General.Authentication.Ssh.PrivateKey = &sshKeyString
 	errs := paramsMain.Validate()
 	if len(errs) == 0 {
-		c.parameters = paramsMain
+		c.Parameters = paramsMain
 	}
 	return errs
 }
 
-func (c *Cluster) writeParameters() error {
-	// TODO Don't forget to do 600
-	c.log().Warnf("Implement me")
-	return nil
-}
+func (c *Cluster) Create(context *cli.Context) (errs []error) {
 
-func (c *Cluster) Create(context *cli.Context) []error {
-	errs := c.createParameters(context)
+	if context.NArg() < 1 {
+		errs = append(errs, fmt.Errorf("please provide a cluster name"))
+	} else {
+		c.Name = context.Args().First()
+		errs = append(errs, c.validateName()...)
+	}
+
+	errs = c.createParameters(context)
 	if len(errs) > 0 {
 		return errs
 	}
 
-	for _, providerName := range c.providers {
+	for providerName, _ := range c.ProviderImageNames {
 		flagName := fmt.Sprintf("%s-provider", providerName)
 		imageName := context.String(flagName)
+		c.ProviderImageNames[providerName] = &imageName
 		if len(imageName) == 0 {
 			errs = append(errs, fmt.Errorf("No value for '--%s' provided", flagName))
 			continue
@@ -118,13 +199,19 @@ func (c *Cluster) Create(context *cli.Context) []error {
 		return errs
 	}
 
+	// write config
+	err := c.WriteConfig()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	return c.Apply(context)
 
 }
 
 func (c *Cluster) Apply(context *cli.Context) []error {
 	// run infrastructure apply
-	paramsMainBytes, err := yaml.Marshal(c.parameters)
+	paramsMainBytes, err := yaml.Marshal(c.Parameters)
 	if err != nil {
 		return []error{
 			fmt.Errorf("Error while writing parameters file: ", err),
@@ -140,14 +227,14 @@ func (c *Cluster) Apply(context *cli.Context) []error {
 	}
 
 	// check and merge output from infrastructure apply
-	c.parameters.Parse(string(output))
-	errs := c.parameters.Validate()
+	c.Parameters.Parse(string(output))
+	errs := c.Parameters.Validate()
 	if len(errs) > 0 {
 		return errs
 	}
 
 	// run config apply
-	paramsMainBytes, err = yaml.Marshal(c.parameters)
+	paramsMainBytes, err = yaml.Marshal(c.Parameters)
 	if err != nil {
 		return []error{
 			fmt.Errorf("Error while writing parameters file: ", err),

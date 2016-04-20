@@ -1,13 +1,17 @@
 package main
 
 import (
-	"os"
+	"io/ioutil"
+	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/simonswine/slingshot/utils"
+	"os"
 )
+
+const SlingshotClusterFileName = "cluster.yaml"
 
 type Slingshot struct {
 	dockerClient *docker.Client
@@ -23,6 +27,35 @@ func NewSlingshot() *Slingshot {
 func (s *Slingshot) Init() {
 	s.log().Infof("initialise %s %s (%s)", AppName, AppVersion, GitCommit)
 	s.ensureConfigDir()
+	s.loadClusters()
+}
+
+func (s *Slingshot) loadClusters() {
+	files, _ := ioutil.ReadDir(s.configDir)
+	for _, f := range files {
+		if f.IsDir() {
+			configPath := filepath.Join(
+				s.configDir,
+				f.Name(),
+				SlingshotClusterFileName,
+			)
+
+			// skip if a dir or not exists
+			stat, err := os.Stat(configPath)
+			if err != nil || stat.IsDir() {
+				continue
+			}
+
+			// load cluster otherwise
+			c, err := LoadClusterFromPath(s, configPath)
+			if err != nil {
+				s.log().Warnf("Could not read cluster in '%s': %s", configPath, err)
+			}
+
+			s.clusters = append(s.clusters, c)
+			s.log().Debugf("read cluster config file in '%s'", configPath)
+		}
+	}
 }
 
 func (s *Slingshot) ensureConfigDir() {
@@ -32,21 +65,8 @@ func (s *Slingshot) ensureConfigDir() {
 	}
 	s.configDir = configDir
 
-	if stat, err := os.Stat(s.configDir); err != nil {
-		if os.IsNotExist(err) {
-			err = os.Mkdir(s.configDir, 0700)
-			if err != nil {
-				s.log().Fatal("failed to create config directory: ", err)
-			}
-			s.log().Infof("created config directory in '%s'", s.configDir)
-		} else {
-			s.log().Fatal("can't not list config directory: ", err)
-		}
-	} else {
-		if !stat.IsDir() {
-			s.log().Fatalf("config directory '%s' is not a file", s.configDir)
-		}
-
+	if err := utils.EnsureDirectory(s.configDir); err != nil {
+		s.log().Fatal(err)
 	}
 }
 
@@ -130,7 +150,7 @@ func (s *Slingshot) Commands() []cli.Command {
 			Name:        "cluster",
 			Usage:       "manage clusters",
 			Subcommands: s.clusterCommands(),
-			Before: func(context *cli.Context) (error) {
+			Before: func(context *cli.Context) error {
 				s.Init()
 				return nil
 			},
