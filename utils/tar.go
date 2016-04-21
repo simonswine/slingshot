@@ -16,7 +16,7 @@ type TarObject struct {
 }
 
 // tar a list of files and directories
-func tarListOfObjects(objects []TarObject) (tarData []byte, err error) {
+func TarListOfObjects(objects []TarObject) (tarData []byte, err error) {
 
 	buf := new(bytes.Buffer)
 
@@ -27,9 +27,11 @@ func tarListOfObjects(objects []TarObject) (tarData []byte, err error) {
 			err = errWriteHeader
 			return
 		}
-		if _, errWrite := tarWriter.Write(*object.Body); errWrite != nil {
-			err = errWrite
-			return
+		if object.Body != nil {
+			if _, errWrite := tarWriter.Write(*object.Body); errWrite != nil {
+				err = errWrite
+				return
+			}
 		}
 	}
 	err = tarWriter.Close()
@@ -37,37 +39,45 @@ func tarListOfObjects(objects []TarObject) (tarData []byte, err error) {
 	return
 }
 
-func walkDirToObjects(fullPath string, rootPath string) (objects []TarObject, err error) {
+func WalkDirToObjects(fullPath string, rootPath string) (objects []TarObject, err error) {
 	err = filepath.Walk(
 		fullPath,
 		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+
 			relativePath, err := filepath.Rel(rootPath, path)
 			if err != nil {
 				return err
 			}
+
+			// filter cwd
 			if len(relativePath) == 0 || relativePath == "." {
 				return nil
 			}
 
-			object := TarObject{
-				Header: &tar.Header{
-					Name:    relativePath,
-					Mode:    int64(info.Mode()),
-					ModTime: info.ModTime(),
-					Size:    info.Size(),
-				},
+			// file path not existing
+			if info == nil {
+				return nil
 			}
-			if !info.IsDir() {
-				object.Header.Typeflag = tar.TypeReg
 
+			object := TarObject{}
+			object.Header, err = tar.FileInfoHeader(info, info.Name())
+			if err != nil {
+				return err
+			}
+
+			object.Header.Name = relativePath
+			if info.IsDir() {
+				object.Header.Name += "/"
+			} else {
 				// read file content
 				fileBytes, err := ioutil.ReadFile(path)
 				if err != nil {
 					return err
 				}
 				object.Body = &fileBytes
-			} else {
-				object.Header.Typeflag = tar.TypeDir
 			}
 
 			objects = append(objects, object)

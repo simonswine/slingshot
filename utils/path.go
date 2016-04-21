@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"os"
 	"fmt"
+	"os"
 )
 
 func EnsureDirectory(path string) error {

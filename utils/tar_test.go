@@ -1,12 +1,13 @@
 package utils
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path"
 )
 
 func createExampleTree(tempDir string) error {
@@ -73,7 +74,7 @@ func TestWalkDirFromObject(t *testing.T) {
 		t.Error(err)
 	}
 
-	objects, err := walkDirToObjects(tempDir, tempDir)
+	objects, err := WalkDirToObjects(tempDir, tempDir)
 
 	assert.Nil(t, err, "No error happens")
 	assert.Equal(t, 4, len(objects))
@@ -81,12 +82,12 @@ func TestWalkDirFromObject(t *testing.T) {
 	testFiles := 0
 	for _, object := range objects {
 		if object.Header.Name == "test1.txt" {
-			assert.Equal(t, int64(0600), object.Header.Mode)
+			assert.Equal(t, "100600", fmt.Sprintf("%o", object.Header.Mode))
 			assert.Equal(t, "test1", string(*object.Body))
 			testFiles++
 		}
 		if object.Header.Name == "testdir/test2.txt" {
-			assert.Equal(t, int64(0640), object.Header.Mode)
+			assert.Equal(t, "100640", fmt.Sprintf("%o", object.Header.Mode))
 			assert.Equal(t, "test2", string(*object.Body))
 			testFiles++
 		}
