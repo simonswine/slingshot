@@ -11,6 +11,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/simonswine/slingshot/utils"
+	"text/tabwriter"
 )
 
 const SlingshotClusterFileName = "cluster.yaml"
@@ -152,6 +153,34 @@ func (s *Slingshot) clusterApplyAction(context *cli.Context) {
 	}
 }
 
+func (s *Slingshot) clusterListAction(context *cli.Context){
+	s.Init()
+
+	w := new(tabwriter.Writer)
+
+	// Format in tab-separated columns with a tab stop of 8.
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	fmt.Fprintln(w, "Cluster Name\tInfrastructure Provider\tConfig Provider")
+
+	for _, cluster := range s.clusters {
+		infra := cluster.ProviderImageNames["infrastructure"]
+		config := cluster.ProviderImageNames["config"]
+		if config == nil || infra == nil {
+			continue
+		}
+		fmt.Fprintln(w, fmt.Sprintf(
+			"%s\t%s\t%s",
+			cluster.Name,
+			*infra,
+			*config,
+		))
+	}
+
+	fmt.Fprintln(w)
+	w.Flush()
+
+}
+
 func (s *Slingshot) unimplementedAction(context *cli.Context) {
 	s.log().Warnf("command '%s' (%s) not implemented", context.Command.HelpName, context.Command.Usage)
 }
@@ -185,8 +214,7 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 		{
 			Name:  "list",
 			Usage: "list existing clusters",
-			// TODO Implement me
-			Action: s.unimplementedAction,
+			Action: s.clusterListAction,
 		},
 	}
 }
