@@ -71,11 +71,9 @@ func (p *Provider) RunCommand(commandName string, parameters *[]byte) (output []
 		}
 		return c.Run(parameters)
 
-	} else {
-		err = fmt.Errorf("command '%s' not found", commandName)
-		return
 	}
 
+	err = fmt.Errorf("command '%s' not found", commandName)
 	return
 }
 
@@ -137,13 +135,11 @@ func (p *Provider) getImage() (string, error) {
 	if len(list) == 1 {
 		return list[0].ID, nil
 
-	} else {
-		err = fmt.Errorf("This should never happen: more than a one image found (%d)", len(list))
-		p.log().Error(err)
-		return "", err
 	}
 
-	return "", nil
+	err = fmt.Errorf("This should never happen: more than a one image found (%d)", len(list))
+	p.log().Error(err)
+	return "", err
 }
 
 func (p *Provider) ImageName() string {

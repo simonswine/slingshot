@@ -2,13 +2,15 @@ package main
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/simonswine/slingshot/utils"
-	"os"
 )
 
 const SlingshotClusterFileName = "cluster.yaml"
@@ -58,6 +60,15 @@ func (s *Slingshot) loadClusters() {
 	}
 }
 
+func (s *Slingshot) getClusterByName(name string) (*Cluster, error) {
+	for _, cluster := range s.clusters {
+		if cluster.Name == name {
+			return cluster, nil
+		}
+	}
+	return nil, fmt.Errorf("cannot find a cluster with the name '%s'", name)
+}
+
 func (s *Slingshot) ensureConfigDir() {
 	configDir, err := utils.SlinshotConfigDirPath()
 	if err != nil {
@@ -97,16 +108,47 @@ func (s *Slingshot) Docker() (*docker.Client, error) {
 }
 
 func (s *Slingshot) clusterCreateAction(context *cli.Context) {
-	c := NewCluster(s)
+	s.Init()
 
+	c := NewCluster(s)
 	s.clusters = append(s.clusters, c)
 
 	errs := c.Create(context)
 	if len(errs) > 0 {
 		for _, err := range errs {
+			s.log().Error(err)
+		}
+		s.log().Fatalf("errors prevent execution of '%s'", context.Command.HelpName)
+	}
+}
+
+func (s *Slingshot) readClusterName(context *cli.Context) (string, error) {
+	if context.NArg() < 1 {
+		return "", fmt.Errorf("please provide a cluster name")
+	}
+
+	return strings.ToLower(context.Args().First()), nil
+}
+
+func (s *Slingshot) clusterApplyAction(context *cli.Context) {
+	s.Init()
+
+	cName, err := s.readClusterName(context)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	c, err := s.getClusterByName(cName)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	errs := c.Apply(context)
+	if len(errs) > 0 {
+		for _, err := range errs {
 			log.Error(err)
 		}
-		log.Fatal("errors prevent further execution")
+		s.log().Fatalf("errors prevent execution of '%s'", context.Command.HelpName)
 	}
 }
 
@@ -136,6 +178,11 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 			},
 		},
 		{
+			Name:   "apply",
+			Usage:  "rerun provisioning of existing cluster",
+			Action: s.clusterApplyAction,
+		},
+		{
 			Name:  "list",
 			Usage: "list existing clusters",
 			// TODO Implement me
@@ -151,7 +198,6 @@ func (s *Slingshot) Commands() []cli.Command {
 			Usage:       "manage clusters",
 			Subcommands: s.clusterCommands(),
 			Before: func(context *cli.Context) error {
-				s.Init()
 				return nil
 			},
 		},
