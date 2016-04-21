@@ -34,3 +34,38 @@ func TestHostCommandExecuteFail(t *testing.T) {
 	assert.True(t, len(stderr) > 0, "Outputs stderr")
 	assert.Equal(t, 2, exitCode)
 }
+
+func TestHostCommandPersistence(t *testing.T) {
+	c := &Command{
+		commandImplementation: &HostCommand{
+			BaseCommand: BaseCommand{
+				config: &CommandConfig{
+					PersistPaths: []string{
+						"test.txt",
+						"test/",
+					},
+				},
+			},
+		},
+		provider: &MockProvider{},
+	}
+
+	_, _, exitCode, err := c.Execute([]string{"/bin/sh", "-c", "echo test987 > test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+
+	_, _, exitCode, err = c.Execute([]string{"/bin/sh", "-c", "mkdir test; echo test654 > test/test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+
+	stdout, _, exitCode, err := c.Execute([]string{"cat", "test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, "test987\n", stdout)
+
+	stdout, _, exitCode, err = c.Execute([]string{"cat", "test/test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, "test654\n", stdout)
+
+}

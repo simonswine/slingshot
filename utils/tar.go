@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"errors"
 )
 
 type TarObject struct {
@@ -136,4 +137,50 @@ func FirstFileFromTar(reader io.Reader) (fileBody []byte, fileName string, err e
 	}
 	err = fmt.Errorf("Reached end of tar without finding a regular file")
 	return
+}
+
+func MergeTar(tarArray[][]byte) ([]byte, error){
+
+	if len(tarArray) == 0 {
+		err := errors.New("No tar found")
+		return []byte{}, err
+	}
+
+	if len(tarArray) == 1 {
+		return tarArray[0], nil
+	}
+
+	buf := new(bytes.Buffer)
+	tarMerged := tar.NewWriter(buf)
+
+	for _, tarSingle := range tarArray {
+		tarReader := tar.NewReader(bytes.NewReader(tarSingle))
+		for {
+			metaData, err := tarReader.Next()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return []byte{}, err
+			}
+
+			err = tarMerged.WriteHeader(metaData)
+			if err != nil {
+				return []byte{}, err
+			}
+
+			if metaData.Size > 0 {
+				_, err := io.CopyN(tarMerged, tarReader, metaData.Size)
+				if err != nil {
+					return []byte{}, err
+				}
+			}
+
+		}
+
+	}
+
+	tarMerged.Close()
+
+	return buf.Bytes(), nil
 }

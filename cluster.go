@@ -78,7 +78,7 @@ func (c *Cluster) newProvider(providerName string, imageName string) error {
 	} else {
 		return fmt.Errorf("provider '%s' not found", providerName)
 	}
-	provider.slingshot = c.slingshot
+	provider.cluster = c
 	provider.init(providerName)
 	return provider.initImage(imageName)
 }

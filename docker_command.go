@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"path"
 
@@ -14,15 +15,13 @@ var DockerDefaultEntrypoint = []string{"/bin/sh", "-c"}
 
 type DockerCommand struct {
 	BaseCommand
-	dockerClient *docker.Client
-	imageId      string
-	containerId  *string
-	entrypoint   *[]string
-	workDir      *string
+	containerId *string
+	entrypoint  *[]string
+	workDir     *string
 }
 
 func (c *DockerCommand) getImageConfig() {
-	inspect, err := c.dockerClient.InspectImage(c.imageId)
+	inspect, err := c.provider.Docker().InspectImage(*c.provider.DockerImageId())
 	if err != nil {
 		c.log().Warn("failed to detect image config: ", err)
 		c.entrypoint = &DockerDefaultEntrypoint
@@ -36,9 +35,9 @@ func (c *DockerCommand) getImageConfig() {
 func (c *DockerCommand) Prepare(parameters *[]byte) error {
 	c.getImageConfig()
 
-	container, err := c.dockerClient.CreateContainer(docker.CreateContainerOptions{
+	container, err := c.provider.Docker().CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
-			Image:      c.imageId,
+			Image:      *c.provider.DockerImageId(),
 			Cmd:        DockerSleepCommand,
 			Entrypoint: []string{},
 		},
@@ -48,7 +47,7 @@ func (c *DockerCommand) Prepare(parameters *[]byte) error {
 		return err
 	}
 
-	err = c.dockerClient.StartContainer(*c.containerId, nil)
+	err = c.provider.Docker().StartContainer(*c.containerId, nil)
 	if err != nil {
 		return err
 	}
@@ -73,6 +72,55 @@ func (c *DockerCommand) Prepare(parameters *[]byte) error {
 	return nil
 }
 
+func (c *DockerCommand) ReadTar(statePaths []string) (tarData []byte, err error) {
+
+	var tarArchives [][]byte
+
+	for _, statePath := range statePaths {
+		filePath := path.Join(
+			*c.workDir,
+			statePath,
+		)
+		buf := new(bytes.Buffer)
+		err = c.provider.Docker().DownloadFromContainer(
+			*c.containerId,
+			docker.DownloadFromContainerOptions{
+				Path:         filePath,
+				OutputStream: buf,
+			},
+		)
+		if err != nil {
+			c.log().Debugf("skip storing state for %s : %s", statePath, err)
+			continue
+		}
+		tarArchives = append(tarArchives, buf.Bytes())
+	}
+
+	if len(tarArchives) == 0 {
+		return []byte{}, errors.New("No files to persist")
+	}
+
+	return utils.MergeTar(tarArchives)
+}
+
+func (c *DockerCommand) ExtractTar(tarData []byte, destPath string) error {
+	tarReader := bytes.NewReader(tarData)
+	containerPath := path.Join(
+		*c.workDir,
+		destPath,
+	)
+	if containerPath == "" {
+		containerPath = "/"
+	}
+	return c.provider.Docker().UploadToContainer(
+		*c.containerId,
+		docker.UploadToContainerOptions{
+			Path:        containerPath,
+			InputStream: tarReader,
+		},
+	)
+}
+
 func (c *DockerCommand) uploadFile(filePath string, fileBody []byte, fileMode int64) (err error) {
 	tarReader, err := utils.TarFromFile(
 		path.Base(filePath),
@@ -83,7 +131,7 @@ func (c *DockerCommand) uploadFile(filePath string, fileBody []byte, fileMode in
 		return err
 	}
 
-	return c.dockerClient.UploadToContainer(
+	return c.provider.Docker().UploadToContainer(
 		*c.containerId,
 		docker.UploadToContainerOptions{
 			Path:        path.Dir(filePath),
@@ -96,7 +144,7 @@ func (c *DockerCommand) downloadFile(path string) (content []byte, err error) {
 
 	buf := new(bytes.Buffer)
 
-	err = c.dockerClient.DownloadFromContainer(
+	err = c.provider.Docker().DownloadFromContainer(
 		*c.containerId,
 		docker.DownloadFromContainerOptions{
 			Path:         path,
@@ -114,7 +162,7 @@ func (c *DockerCommand) downloadFile(path string) (content []byte, err error) {
 
 func (c *DockerCommand) CleanUp() {
 	if c.containerId != nil {
-		err := c.dockerClient.RemoveContainer(docker.RemoveContainerOptions{
+		err := c.provider.Docker().RemoveContainer(docker.RemoveContainerOptions{
 			ID:    *c.containerId,
 			Force: true,
 		})
@@ -154,13 +202,13 @@ func (c *DockerCommand) Exec(execCommand []string, stdout io.Writer, stderr io.W
 		createOpts.AttachStdin = true
 	}
 
-	execDocker, err := c.dockerClient.CreateExec(createOpts)
+	execDocker, err := c.provider.Docker().CreateExec(createOpts)
 	if err != nil {
 		return
 	}
 
 	c.log().WithField("command", execIncludingEntrypoint).Debugf("run command")
-	err = c.dockerClient.StartExec(
+	err = c.provider.Docker().StartExec(
 		execDocker.ID,
 		startOpts,
 	)
@@ -168,7 +216,7 @@ func (c *DockerCommand) Exec(execCommand []string, stdout io.Writer, stderr io.W
 		return
 	}
 
-	execInspect, err := c.dockerClient.InspectExec(execDocker.ID)
+	execInspect, err := c.provider.Docker().InspectExec(execDocker.ID)
 	if err != nil {
 		return
 	}

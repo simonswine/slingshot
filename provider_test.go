@@ -3,9 +3,45 @@ package main
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"path"
 	"testing"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/stretchr/testify/assert"
 )
+
+type MockProvider struct {
+	tmpDir *string
+}
+
+func (p *MockProvider) StatePath() string {
+	if p.tmpDir == nil {
+		tmpDir, _ := ioutil.TempDir("", AppName)
+		p.tmpDir = &tmpDir
+	}
+
+	return path.Join(
+		*p.tmpDir,
+		"provider-test.tar",
+	)
+}
+
+func (p *MockProvider) Log() *log.Entry {
+	log.SetLevel(log.DebugLevel)
+	return log.WithField("context", "mock-provider")
+}
+
+func (p *MockProvider) Docker() *docker.Client {
+	dockerClient, _ := docker.NewClientFromEnv()
+	return dockerClient
+}
+
+func (p *MockProvider) DockerImageId() *string {
+	str := "busybox:latest"
+	return &str
+}
 
 func TestProviderConfigParseYamlInfrastructureHostCommand(t *testing.T) {
 

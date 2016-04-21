@@ -153,7 +153,7 @@ func (s *Slingshot) clusterApplyAction(context *cli.Context) {
 	}
 }
 
-func (s *Slingshot) clusterListAction(context *cli.Context){
+func (s *Slingshot) clusterListAction(context *cli.Context) {
 	s.Init()
 
 	w := new(tabwriter.Writer)
@@ -212,8 +212,8 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 			Action: s.clusterApplyAction,
 		},
 		{
-			Name:  "list",
-			Usage: "list existing clusters",
+			Name:   "list",
+			Usage:  "list existing clusters",
 			Action: s.clusterListAction,
 		},
 	}

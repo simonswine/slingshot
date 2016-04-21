@@ -3,7 +3,6 @@ package main
 import (
 	"testing"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"
 	"os"
 )
@@ -14,22 +13,20 @@ func prepareDockerCommand(t *testing.T) *Command {
 		t.Skip("Skipping docker integration tests: Set environment DOCKER_ENABLE=true to enable")
 	}
 
-	dockerClient, err := docker.NewClientFromEnv()
+	p := &MockProvider{}
+
+	_, err := p.Docker().Info()
 	if err != nil {
 		t.Skip("No docker available")
 	}
 
-	_, err = dockerClient.Info()
-	if err != nil {
-		t.Skip("No docker available")
-	}
-
-	c := &Command{
-		commandImplementation: &DockerCommand{
-			imageId:      "busybox",
-			dockerClient: dockerClient,
+	c := &Command{}
+	c.Init(
+		&CommandConfig{
+			Type: "docker",
 		},
-	}
+		&MockProvider{},
+	)
 	return c
 }
 
@@ -53,4 +50,31 @@ func TestDockerCommandExecuteFailStderr(t *testing.T) {
 	assert.Equal(t, "", stdout)
 	assert.Equal(t, "ls: /notexisting: No such file or directory\n", stderr)
 	assert.Equal(t, 1, exitCode)
+}
+
+func TestDockerCommandPersistence(t *testing.T) {
+	c := prepareDockerCommand(t)
+	c.commandImplementation.Config().PersistPaths = []string{
+		"test.txt",
+		"test/",
+	}
+
+	_, _, exitCode, err := c.Execute([]string{"/bin/sh", "-c", "echo test987 > test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+
+	_, _, exitCode, err = c.Execute([]string{"/bin/sh", "-c", "mkdir test; echo test654 > test/test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+
+	stdout, _, exitCode, err := c.Execute([]string{"cat", "test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, "test987\n", stdout)
+
+	stdout, _, exitCode, err = c.Execute([]string{"cat", "test/test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, "test654\n", stdout)
+
 }

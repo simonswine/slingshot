@@ -115,6 +115,35 @@ func (c *HostCommand) Exec(execSingle []string, stdout io.Writer, stderr io.Writ
 	return
 }
 
+func (c *HostCommand) ReadTar(statePaths []string) (tarData []byte, err error) {
+
+	var tarObjects []utils.TarObject
+
+	for _, statePath := range statePaths {
+		objs, err := utils.WalkDirToObjects(
+			path.Join(
+				*c.tempWorkDir,
+				statePath,
+			),
+			*c.tempWorkDir,
+		)
+		if err != nil {
+			return []byte{}, err
+		}
+		tarObjects = append(tarObjects, objs...)
+	}
+
+	return utils.TarListOfObjects(tarObjects)
+}
+
+func (c *HostCommand) ExtractTar(tarData []byte, destPath string) error {
+	err := utils.UnTar(
+		tarData,
+		*c.tempWorkDir,
+	)
+	return err
+}
+
 func (c *HostCommand) Output() (output []byte, err error) {
 	if c.config != nil && c.config.ResultFile != nil && c.tempWorkDir != nil {
 		filePath := path.Join(

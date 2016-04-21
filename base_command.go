@@ -7,7 +7,12 @@ import (
 )
 
 type BaseCommand struct {
-	config *CommandConfig
+	config   *CommandConfig
+	provider ProviderInterface
+}
+
+func (c *BaseCommand) Log() *log.Entry {
+	return c.log()
 }
 
 func (c *BaseCommand) log() *log.Entry {
