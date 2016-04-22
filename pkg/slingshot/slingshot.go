@@ -1,4 +1,4 @@
-package main
+package slingshot
 
 import (
 	"io/ioutil"
@@ -10,20 +10,30 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/simonswine/slingshot/utils"
+	"github.com/simonswine/slingshot/pkg/utils"
 	"text/tabwriter"
 )
 
 const SlingshotClusterFileName = "cluster.yaml"
 
 type Slingshot struct {
+	App          *cli.App
 	dockerClient *docker.Client
 	clusters     []*Cluster
 	configDir    string
 }
 
 func NewSlingshot() *Slingshot {
+	log.SetLevel(log.DebugLevel)
+
 	s := &Slingshot{}
+
+	s.App = cli.NewApp()
+	s.App.Name = AppName
+	s.App.Version = AppVersion
+	s.App.Usage = "yet another zero to kubernetes utility"
+	s.App.Commands = s.Commands()
+
 	return s
 }
 

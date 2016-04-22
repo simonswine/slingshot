@@ -1,4 +1,4 @@
-package main
+package slingshot
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"path"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/simonswine/slingshot/utils"
+	"github.com/simonswine/slingshot/pkg/utils"
 )
 
 var DockerSleepCommand = []string{"/bin/sleep", "3600"}

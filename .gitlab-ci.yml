@@ -6,7 +6,7 @@ build:
     - mkdir -p /go/src/github.com/simonswine
     - mv ${CI_PROJECT_DIR} /go/src/github.com/simonswine
     - cd /go/src/github.com/simonswine/slingshot
-    - make build_all
+    - make test build_all
     - mv /go/src/github.com/simonswine/slingshot ${CI_PROJECT_DIR} 
   tags:
     - golang

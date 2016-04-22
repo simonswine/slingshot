@@ -1,4 +1,4 @@
-package main
+package slingshot
 
 import (
 	"io"
@@ -8,7 +8,7 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/simonswine/slingshot/utils"
+	"github.com/simonswine/slingshot/pkg/utils"
 )
 
 type HostCommand struct {

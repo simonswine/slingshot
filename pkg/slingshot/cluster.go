@@ -1,4 +1,4 @@
-package main
+package slingshot
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/simonswine/slingshot/utils"
+	"github.com/simonswine/slingshot/pkg/utils"
 	"gopkg.in/yaml.v2"
 )
 

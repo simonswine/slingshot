@@ -12,17 +12,22 @@ CONTAINER_DIR=/go/src/${PACKAGE_NAME}
 
 depend:
 	which godep || go get github.com/tools/godep
-	$(shell mkdir -p `dirname $(SYMLINK_DEST)`)
-	rm -f $(SYMLINK_DEST)
-	ln -s ../../../../../ $(SYMLINK_DEST)
+	#$(shell mkdir -p `dirname $(SYMLINK_DEST)`)
+	#rm -f $(SYMLINK_DEST)
+	#ln -s ../../../../../ $(SYMLINK_DEST)
 
 
-test: depend
+test_1: depend
 	mkdir -p ${TEST_DIR}
-	godep go test -coverprofile=${TEST_DIR}/cover.out
-	godep go test -coverprofile=${TEST_DIR}/cover.utils.out ./utils
-	go tool cover -html=${TEST_DIR}/cover.out -o ${TEST_DIR}/coverage.html
-	go tool cover -html=${TEST_DIR}/cover.utils.out -o ${TEST_DIR}/coverage.utils.html
+	godep go test -coverprofile=${TEST_DIR}/cover.slingshot.out ./pkg/slingshot
+	godep go test -coverprofile=${TEST_DIR}/cover.utils.out ./pkg/utils
+	go tool cover -html=${TEST_DIR}/cover.slingshot.out -o ${TEST_DIR}/coverage.slingshot.html
+	go tool cover -html=${TEST_DIR}/cover.utils.out     -o ${TEST_DIR}/coverage.utils.html
+
+test: test_slingshot test_utils
+
+test_%: depend
+	cd pkg/$* && godep go test
 
 build: depend
 	mkdir -p ${BUILD_DIR}
