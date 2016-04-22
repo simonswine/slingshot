@@ -14,6 +14,7 @@ import (
 
 type Cluster struct {
 	Name                   string
+	Version                string
 	Parameters             *Parameters        `yaml:"parameters"`
 	ProviderImageNames     map[string]*string `yaml:"providerImageNames"`
 	infrastructureProvider *InfrastructureProvider
@@ -24,6 +25,7 @@ type Cluster struct {
 func NewCluster(slingshot *Slingshot) *Cluster {
 	c := &Cluster{
 		slingshot: slingshot,
+		Version:   "1",
 	}
 
 	// initialize map

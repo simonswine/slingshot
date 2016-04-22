@@ -7,11 +7,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var ParameterInventoryRoles = map[string]bool{
-	"masters": true,
-	"workers": true,
-}
-
 type Parameters struct {
 	General   ParametersGeneral
 	Inventory []ParameterInventory
@@ -62,22 +57,77 @@ func (pG *ParametersGeneral) Defaults() {
 
 type ParametersCluster struct {
 	Kubernetes ParametersKubernetes
+	Machines   map[string]ParameterMachine
 }
 
 func (pC *ParametersCluster) Defaults() {
 	pC.Kubernetes.Defaults()
+
+	masterMachines := ParameterMachine{}
+	masterMachines.Defaults()
+	masterRoles := []string{"masters"}
+	masterMachines.Roles = &masterRoles
+	masterMachines.Count = 1
+
+	workerMachines := ParameterMachine{}
+	workerMachines.Defaults()
+	workerRoles := []string{"workers"}
+	workerMachines.Roles = &workerRoles
+	workerMachines.Count = 2
+	workerInstanceType := "t2.large"
+	workerMachines.InstanceType = &workerInstanceType
+	workerCores := 2
+	workerMachines.Cores = &workerCores
+	workerMemory := 1024
+	workerMachines.Memory = &workerMemory
+
+	pC.Machines = map[string]ParameterMachine{
+		"master": masterMachines,
+		"worker": workerMachines,
+	}
+}
+
+func (pC *ParametersCluster) ValidateMachines() (errs []error) {
+	for _, elem := range pC.Machines {
+		errs = append(errs, elem.Validate()...)
+	}
+	return
 }
 
 func (pC *ParametersCluster) Validate() (errs []error) {
 	errs = append(errs, pC.Kubernetes.Validate()...)
+	errs = append(errs, pC.ValidateMachines()...)
+	return
+}
+
+type ParameterMachine struct {
+	Count        int       `yaml:"count"`
+	Cores        *int      `yaml:"cores,omitempty"`
+	Memory       *int      `yaml:"memory,omitempty"`
+	InstanceType *string   `yaml:"instanceType,omitempty"`
+	Roles        *[]string `yaml:"roles,omitempty"`
+}
+
+func (pM *ParameterMachine) Defaults() {
+	pM.Count = 1
+	cores := 1
+	pM.Cores = &cores
+	memory := 512
+	pM.Memory = &memory
+	roles := []string{"nodes"}
+	pM.Roles = &roles
+	instanceType := "m3.medium"
+	pM.InstanceType = &instanceType
+}
+
+func (pM *ParameterMachine) Validate() (errs []error) {
+	// TODO: Implement some validations
 	return
 }
 
 type ParametersKubernetes struct {
 	Interface      *string `yaml:"interface,omitempty"`
 	MasterApiPort  int     `yaml:"masterApiPort"`
-	MastersCount   int     `yaml:"mastersCount"`
-	WorkersCount   int     `yaml:"workersCount"`
 	ServiceNetwork string  `yaml:"serviceNetwork"`
 	Dns            struct {
 		Replicas   int
@@ -99,9 +149,6 @@ type ParametersKubernetes struct {
 
 func (pK *ParametersKubernetes) Defaults() {
 	pK.MasterApiPort = 443
-
-	pK.MastersCount = 1
-	pK.WorkersCount = 2
 
 	pK.ServiceNetwork = "10.245.0.0/16"
 
@@ -169,22 +216,18 @@ func (pA *ParametersAuthentication) Defaults() {
 }
 
 type ParameterInventory struct {
-	Name  *string
-	IP    *string
-	Roles []string
+	Name      *string
+	PublicIP  *string `yaml:"publicIP"`
+	PrivateIP *string `yaml:"privateIP"`
+	Roles     []string
 }
 
 func (pI *ParameterInventory) Validate() (errs []error) {
-	if pI.IP == nil {
-		errs = append(errs, fmt.Errorf("Required IP field missing"))
+	if pI.PrivateIP == nil {
+		errs = append(errs, fmt.Errorf("Required PrivateIP field missing"))
 	}
 	if len(pI.Roles) < 1 {
 		errs = append(errs, fmt.Errorf("You need to specify at least on role"))
-	}
-	for _, role := range pI.Roles {
-		if _, ok := ParameterInventoryRoles[role]; !ok {
-			errs = append(errs, fmt.Errorf("Unknown role specified '%s'", role))
-		}
 	}
 	return
 }

@@ -13,11 +13,13 @@ func TestParametersInventory(t *testing.T) {
     hostname: masters-1.k8s.den
     roles:
       - masters
-    ip: 192.168.51.51
+    privateIP: 192.168.51.51
+    publicIP: 192.168.51.51
   - name: k8s-workers-1
     roles:
       - workers
-    ip: 192.168.51.52`
+    privateIP: 192.168.51.52
+    publicIP: 192.168.51.52`
 
 	p := &Parameters{}
 	err := p.Parse(yamlContent)
@@ -28,8 +30,54 @@ func TestParametersInventory(t *testing.T) {
 	// ensure no validation erros
 	assert.Equal(t, []error(nil), valErrs)
 
-	// ensure all vars are parsed
+	// ensure all vars are parse
 	assert.Equal(t, 2, len(p.Inventory))
+}
+
+func TestParametersMachines(t *testing.T) {
+	yamlContent := `cluster:
+  machines:
+    master:
+      count: 2
+      cores: 2
+      instanceType: m3.medium
+      memory: 1024
+      roles:
+        - masters
+    worker:
+      count: 1
+      cores: 2
+      instanceType: t2.large
+      memory: 2048
+      roles:
+        - workers`
+
+	p := &ParametersGeneral{}
+	p.Defaults()
+	err := p.Parse(yamlContent)
+	valErrs := p.Cluster.ValidateMachines()
+
+	assert.Nil(t, err, "Unexpected error during parsing")
+
+	// ensure no validation erros
+	assert.Equal(t, []error(nil), valErrs)
+
+	assert.Equal(t, len(p.Cluster.Machines), 2)
+
+	machinesProcessed := 0
+
+	for key, machine := range p.Cluster.Machines {
+		if key == "master" {
+			assert.Equal(t, []string{"masters"}, *machine.Roles)
+			machinesProcessed++
+		}
+		if key == "worker" {
+			assert.Equal(t, []string{"workers"}, *machine.Roles)
+			machinesProcessed++
+		}
+	}
+
+	assert.Equal(t, 2, machinesProcessed, "Not all expected machines were found")
 }
 
 func TestParametersCluster(t *testing.T) {
@@ -37,8 +85,6 @@ func TestParametersCluster(t *testing.T) {
   kubernetes:
     interface: eth1
     masterApiPort: 8443
-    mastersCount: 2
-    workersCount: 1
     serviceNetwork: 10.240.0.0/16
     dns:
       domainName: cluster.swine.de
@@ -66,8 +112,6 @@ func TestParametersCluster(t *testing.T) {
 
 	assert.Equal(t, "eth1", *p.Cluster.Kubernetes.Interface)
 	assert.Equal(t, 8443, p.Cluster.Kubernetes.MasterApiPort)
-	assert.Equal(t, 2, p.Cluster.Kubernetes.MastersCount)
-	assert.Equal(t, 1, p.Cluster.Kubernetes.WorkersCount)
 	assert.Equal(t, "10.240.0.0/16", p.Cluster.Kubernetes.ServiceNetwork)
 
 	assert.Equal(t, "cluster.swine.de", p.Cluster.Kubernetes.Dns.DomainName)

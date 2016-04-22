@@ -3,12 +3,12 @@ package utils
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"errors"
 )
 
 type TarObject struct {
@@ -139,7 +139,7 @@ func FirstFileFromTar(reader io.Reader) (fileBody []byte, fileName string, err e
 	return
 }
 
-func MergeTar(tarArray[][]byte) ([]byte, error){
+func MergeTar(tarArray [][]byte) ([]byte, error) {
 
 	if len(tarArray) == 0 {
 		err := errors.New("No tar found")
