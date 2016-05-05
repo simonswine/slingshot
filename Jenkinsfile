@@ -60,6 +60,10 @@ node('docker'){
 
         stage 'Build and test slingshot'
         sh "make docker"
+
+        stage 'Full integration with vagrant and ansible'
+        sh "rm -rf ~/.slingshot"
+        sh "./_build/slingshot-linux-amd64 cluster create -I simonswine/slingshot-ip-vagrant-coreos -C simonswine/slingshot-cp-ansible-k8s-contrib cluster1"
     }
     jenkinsSlack('finish')
     step([$class: 'Mailer', recipients: 'christian@jetstack.io', notifyEveryUnstableBuild: true])
