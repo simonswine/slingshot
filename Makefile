@@ -12,18 +12,13 @@ CONTAINER_DIR=/go/src/${PACKAGE_NAME}
 
 depend:
 	which godep || go get github.com/tools/godep
-
-test_1: depend
 	mkdir -p ${TEST_DIR}
-	godep go test -coverprofile=${TEST_DIR}/cover.slingshot.out ./pkg/slingshot
-	godep go test -coverprofile=${TEST_DIR}/cover.utils.out ./pkg/utils
-	go tool cover -html=${TEST_DIR}/cover.slingshot.out -o ${TEST_DIR}/coverage.slingshot.html
-	go tool cover -html=${TEST_DIR}/cover.utils.out     -o ${TEST_DIR}/coverage.utils.html
 
 test: test_slingshot test_utils
 
 test_%: depend
-	cd pkg/$* && godep go test
+	godep go test -coverprofile=${TEST_DIR}/cover.$*.out ./pkg/$*
+	go tool cover -html=${TEST_DIR}/cover.$*.out -o ${TEST_DIR}/coverage.$*.html
 
 build: depend
 	mkdir -p ${BUILD_DIR}
