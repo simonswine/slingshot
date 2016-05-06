@@ -64,6 +64,13 @@ node('docker'){
         stage 'Full integration with vagrant and ansible'
         sh "rm -rf ~/.slingshot"
         sh "./_build/slingshot-linux-amd64 cluster create -I simonswine/slingshot-ip-vagrant-coreos -C simonswine/slingshot-cp-ansible-k8s-contrib cluster1"
+
+        stage 'Cleanup virtual box instances'
+        sh """for machine in `VBoxManage list vms | grep slingshot | awk '{print \$2}'`; do
+            VBoxManage controlvm \${machine} poweroff
+            VBoxManage unregistervm \${machine} --delete
+        done"""
+
     }
     jenkinsSlack('finish')
     step([$class: 'Mailer', recipients: 'christian@jetstack.io', notifyEveryUnstableBuild: true])
