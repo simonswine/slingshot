@@ -80,13 +80,13 @@ node('docker'){
         // schedule a pod
         sh "kubectl run --attach --image busybox --restart=Never testpod ping -- -c 10 8.8.4.4"
 
-        stage 'Cleanup virtual box instances'
-        sh """for machine in `VBoxManage list vms | grep slingshot | awk '{print \$2}'`; do
-            VBoxManage controlvm \${machine} poweroff
-            VBoxManage unregistervm \${machine} --delete
-        done"""
 
     }
+    stage 'Cleanup virtual box instances'
+    sh """for machine in `VBoxManage list vms | grep slingshot | awk '{print \$2}'`; do
+        VBoxManage controlvm \${machine} poweroff
+        VBoxManage unregistervm \${machine} --delete
+    done"""
     jenkinsSlack('finish')
     step([$class: 'Mailer', recipients: 'christian@jetstack.io', notifyEveryUnstableBuild: true])
 }
