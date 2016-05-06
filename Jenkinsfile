@@ -64,8 +64,8 @@ node('docker'){
         stage 'Full integration with vagrant and ansible'
         // prepare temp home directory
         def homePath = "${pwd(tmp: true)}/home"
-        sh "rm -rf ${homePath}"
-        sh "mkdir ${homePath} ${homePath}/.vagrant.d ${homePath}/.kube"
+        sh "rm -rf ${homePath}/.slingshot ${homePath}/.kube ${homePath}/.ssh"
+        sh "mkdir -p ${homePath} ${homePath}/.vagrant.d ${homePath}/.kube"
         sh "cp ~/.vagrant.d/insecure_private_key ${homePath}/.vagrant.d/"
         env.HOME = homePath
 
