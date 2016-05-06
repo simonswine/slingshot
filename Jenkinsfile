@@ -62,8 +62,23 @@ node('docker'){
         sh "make docker"
 
         stage 'Full integration with vagrant and ansible'
-        sh "rm -rf ~/.slingshot"
+        // prepare temp home directory
+        def homePath = "${pwd(tmp: true)}/home"
+        sh "rm -rf ${homePath}"
+        sh "mkdir ${homePath} ${homePath}/.vagrant.d ${homePath}/.kube"
+        sh "cp ~/.vagrant.d/insecure_private_key ${homePath}/.vagrant.d/"
+        env.HOME = homePath
+
         sh "./_build/slingshot-linux-amd64 cluster create -I simonswine/slingshot-ip-vagrant-coreos -C simonswine/slingshot-cp-ansible-k8s-contrib cluster1"
+
+        // copy kubectl config over
+        sh "ssh -o \"StrictHostKeyChecking no\" -i ~/.vagrant.d/insecure_private_key core@10.251.0.10 cat /etc/kubernetes/kubectl.kubeconfig > ~/.kube/config"
+
+        // get node status
+        sh "kubectl get nodes"
+
+        // schedule a pod
+        sh "kubectl run --attach --image busybox --restart=Never testpod ping -- -c 10 8.8.4.4"
 
         stage 'Cleanup virtual box instances'
         sh """for machine in `VBoxManage list vms | grep slingshot | awk '{print \$2}'`; do
