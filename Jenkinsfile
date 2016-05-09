@@ -84,7 +84,7 @@ node('docker'){
     }
     stage 'Cleanup virtual box instances'
     sh """for machine in `VBoxManage list vms | grep slingshot | awk '{print \$2}'`; do
-        VBoxManage controlvm \${machine} poweroff
+        VBoxManage controlvm \${machine} poweroff || true
         VBoxManage unregistervm \${machine} --delete
     done"""
     jenkinsSlack('finish')
