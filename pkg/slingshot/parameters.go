@@ -8,7 +8,7 @@ import (
 )
 
 type Parameters struct {
-	Custom    map[string]string
+	Custom    map[string]string `yaml:"custom,omitempty"`
 	General   ParametersGeneral
 	Inventory []ParameterInventory
 }

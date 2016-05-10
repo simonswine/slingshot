@@ -214,6 +214,10 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 					Name:  "ssh-key, i",
 					Usage: "SSH private key to use (please provide an uncrypted key, default: vagrant insecure key)",
 				},
+				cli.StringFlag{
+					Name:  "cluster-file, f",
+					Usage: "Read cluster configuration from file (or stdin if -)",
+				},
 			},
 		},
 		{

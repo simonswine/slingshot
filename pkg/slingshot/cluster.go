@@ -2,7 +2,9 @@ package slingshot
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"path"
 	"regexp"
 
@@ -155,6 +157,29 @@ func (c *Cluster) log() *log.Entry {
 func (c *Cluster) createParameters(context *cli.Context) []error {
 	paramsMain := &Parameters{}
 	paramsMain.Defaults()
+
+	// read cluster config if specified
+	clusterFile := context.String("cluster-file")
+	if len(clusterFile) > 0 {
+		var reader io.Reader
+		var err error
+		if clusterFile == "-" {
+			reader = os.Stdin
+		} else {
+			reader, err = os.Open(clusterFile)
+			if err != nil {
+				return []error{err}
+			}
+		}
+		yamlData, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return []error{fmt.Errorf("Error reading cluster-file: %s", err)}
+		}
+
+		if err = yaml.Unmarshal(yamlData, paramsMain); err != nil {
+			return []error{fmt.Errorf("Error reading cluster-file: %s", err)}
+		}
+	}
 
 	sshKeyPath, err := utils.VagrantKeyPath()
 	if err != nil {
