@@ -15,8 +15,26 @@ make docker
 
 ## Usage
 
+## Build exmaple cluster
+
 ```
 ./slingshot cluster create \
   -I "simonswine/slingshot-ip-vagrant-coreos" \
-  -C "simonswine/slingshot-cp-ansible-k8s-contrib"
+  -C "simonswine/slingshot-cp-ansible-k8s-contrib" \
+  clusterA
+```
+
+## Override ansible vars
+
+```
+./slingshot cluster create \
+  -f - \
+  -I simonswine/slingshot-ip-vagrant-coreos:0.0.2 \
+  -C simonswine/slingshot-cp-ansible-k8s-contrib:0.0.2 \
+  clusterB <<EOF
+custom:
+  ansible_vars_pre: |
+    kube_version: 1.3.0-alpha-petset1
+    kube_download_url_base: "https://s3-eu-west-1.amazonaws.com/jetstack.io-kubernetes-builds/release/v{{ kube_version }}/bin/linux/amd64"
+EOF
 ```
