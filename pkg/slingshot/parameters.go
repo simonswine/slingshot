@@ -8,6 +8,7 @@ import (
 )
 
 type Parameters struct {
+	Custom    map[string]string
 	General   ParametersGeneral
 	Inventory []ParameterInventory
 }
