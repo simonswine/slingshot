@@ -43,6 +43,8 @@ func TestHostCommandPersistence(t *testing.T) {
 					PersistPaths: []string{
 						"test.txt",
 						"test/",
+						"test_file/test_file.txt",
+						"test_dir1/test_dir/",
 					},
 				},
 			},
@@ -62,6 +64,10 @@ func TestHostCommandPersistence(t *testing.T) {
 	assert.Nil(t, err, "Unexpected error during execution")
 	assert.Equal(t, 0, exitCode)
 
+	_, _, exitCode, err = c.Execute([]string{"/bin/sh", "-c", "mkdir -p test_dir1/test_dir/; echo test007 > test_dir1/test_dir/test_file.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+
 	stdout, _, exitCode, err := c.Execute([]string{"cat", "test.txt"})
 	assert.Nil(t, err, "Unexpected error during execution")
 	assert.Equal(t, 0, exitCode)
@@ -76,5 +82,10 @@ func TestHostCommandPersistence(t *testing.T) {
 	assert.Nil(t, err, "Unexpected error during execution")
 	assert.Equal(t, 0, exitCode)
 	assert.Equal(t, "test321\n", stdout)
+
+	stdout, _, exitCode, err = c.Execute([]string{"cat", "test_dir1/test_dir/test_file.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, "test007\n", stdout)
 
 }

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 func UnTar(data []byte, destDir string) error {
@@ -51,6 +52,14 @@ func unTarHelper(reader io.Reader, destDir string) error {
 
 		case tar.TypeReg:
 			// regular files
+			dirName := filepath.Dir(fileName)
+			if _, err := os.Stat(dirName); os.IsNotExist(err) {
+				err = os.MkdirAll(dirName, 0755)
+				if err != nil {
+					return err
+				}
+			}
+
 			writer, err := os.Create(fileName)
 			if err != nil {
 				return err
