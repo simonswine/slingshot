@@ -57,6 +57,7 @@ func TestDockerCommandPersistence(t *testing.T) {
 	c.commandImplementation.Config().PersistPaths = []string{
 		"test.txt",
 		"test/",
+		"test_file/test_file.txt",
 	}
 
 	_, _, exitCode, err := c.Execute([]string{"/bin/sh", "-c", "echo test987 > test.txt"})
@@ -64,6 +65,10 @@ func TestDockerCommandPersistence(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 
 	_, _, exitCode, err = c.Execute([]string{"/bin/sh", "-c", "mkdir test; echo test654 > test/test.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+
+	_, _, exitCode, err = c.Execute([]string{"/bin/sh", "-c", "mkdir test_file; echo test321 > test_file/test_file.txt"})
 	assert.Nil(t, err, "Unexpected error during execution")
 	assert.Equal(t, 0, exitCode)
 
@@ -76,5 +81,10 @@ func TestDockerCommandPersistence(t *testing.T) {
 	assert.Nil(t, err, "Unexpected error during execution")
 	assert.Equal(t, 0, exitCode)
 	assert.Equal(t, "test654\n", stdout)
+
+	stdout, _, exitCode, err = c.Execute([]string{"cat", "test_file/test_file.txt"})
+	assert.Nil(t, err, "Unexpected error during execution")
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, "test321\n", stdout)
 
 }
