@@ -139,6 +139,40 @@ func FirstFileFromTar(reader io.Reader) (fileBody []byte, fileName string, err e
 	return
 }
 
+func PrefixTar(inData []byte, prefix string) ([]byte, error) {
+
+	buf := new(bytes.Buffer)
+	tarPrefixed := tar.NewWriter(buf)
+
+	tarReader := tar.NewReader(bytes.NewReader(inData))
+	for {
+		metaData, err := tarReader.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return []byte{}, err
+		}
+
+		metaData.Name = filepath.Join(prefix, metaData.Name)
+
+		err = tarPrefixed.WriteHeader(metaData)
+		if err != nil {
+			return []byte{}, err
+		}
+
+		if metaData.Size > 0 {
+			_, err := io.CopyN(tarPrefixed, tarReader, metaData.Size)
+			if err != nil {
+				return []byte{}, err
+			}
+		}
+	}
+
+	tarPrefixed.Close()
+	return buf.Bytes(), nil
+}
+
 func MergeTar(tarArray [][]byte) ([]byte, error) {
 
 	if len(tarArray) == 0 {

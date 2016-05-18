@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"path"
+	"path/filepath"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/simonswine/slingshot/pkg/utils"
@@ -93,7 +94,18 @@ func (c *DockerCommand) ReadTar(statePaths []string) (tarData []byte, err error)
 			c.log().Debugf("skip storing state for %s : %s", statePath, err)
 			continue
 		}
-		tarArchives = append(tarArchives, buf.Bytes())
+
+		if statePath[len(statePath)-1:] != "/" {
+			prefix := filepath.Dir(statePath)
+			tarPrefixed, err := utils.PrefixTar(buf.Bytes(), prefix)
+			if err != nil {
+				c.log().Debugf("skip storing state for %s prefixinig with %s failed: %s", statePath, prefix, err)
+				continue
+			}
+			tarArchives = append(tarArchives, tarPrefixed)
+		} else {
+			tarArchives = append(tarArchives, buf.Bytes())
+		}
 	}
 
 	if len(tarArchives) == 0 {

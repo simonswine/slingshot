@@ -131,6 +131,7 @@ func (c *HostCommand) ReadTar(statePaths []string) (tarData []byte, err error) {
 			return []byte{}, err
 		}
 		tarObjects = append(tarObjects, objs...)
+
 	}
 
 	return utils.TarListOfObjects(tarObjects)
