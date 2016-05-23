@@ -163,6 +163,28 @@ func (s *Slingshot) clusterApplyAction(context *cli.Context) {
 	}
 }
 
+func (s *Slingshot) clusterDestroyAction(context *cli.Context) {
+	s.Init()
+
+	cName, err := s.readClusterName(context)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	c, err := s.getClusterByName(cName)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	errs := c.Destroy(context)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Error(err)
+		}
+		s.log().Fatalf("errors prevent execution of '%s'", context.Command.HelpName)
+	}
+}
+
 func (s *Slingshot) clusterListAction(context *cli.Context) {
 	s.Init()
 
@@ -224,6 +246,11 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 			Name:   "apply",
 			Usage:  "rerun provisioning of existing cluster",
 			Action: s.clusterApplyAction,
+		},
+		{
+			Name:   "destroy",
+			Usage:  "destroy existing cluster",
+			Action: s.clusterDestroyAction,
 		},
 		{
 			Name:   "list",

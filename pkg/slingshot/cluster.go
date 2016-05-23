@@ -245,6 +245,36 @@ func (c *Cluster) Create(context *cli.Context) (errs []error) {
 
 }
 
+func (c *Cluster) Destroy(context *cli.Context) (errs []error) {
+	return c.destroy()
+}
+
+func (c *Cluster) destroy() (errs []error) {
+
+	errs = append(errs, c.initProviders()...)
+	if len(errs) > 0 {
+		return errs
+	}
+
+	// run infrastructure destroy
+	paramsMainBytes, err := yaml.Marshal(c.Parameters)
+	if err != nil {
+		return []error{
+			fmt.Errorf("Error while writing parameters file: %s", err),
+		}
+	}
+	log.Debugf("params for infra:\n%s", paramsMainBytes)
+
+	_, err = c.infrastructureProvider.RunCommand("destroy", &paramsMainBytes)
+	if err != nil {
+		return []error{
+			fmt.Errorf("Error while running infrastructure provider: %s", err),
+		}
+	}
+
+	return
+}
+
 func (c *Cluster) Apply(context *cli.Context) (errs []error) {
 	return c.apply()
 }
