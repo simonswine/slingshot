@@ -34,6 +34,44 @@ func TestParametersInventory(t *testing.T) {
 	assert.Equal(t, 2, len(p.Inventory))
 }
 
+func TestParametersInventory_2(t *testing.T) {
+
+	yamlContent := `inventory:
+- name: i-37cee7bf
+  privateIP: 172.20.137.62
+  roles:
+  - master
+- name: i-38ba34b4
+  privateIP: 172.20.131.93
+  roles:
+  - master
+- name: i-23bb35af
+  privateIP: 172.20.129.114
+  roles:
+  - worker
+- name: i-8a1c5b00
+  privateIP: 172.20.145.154
+  roles:
+  - worker
+- name: i-85b83609
+  privateIP: 172.20.2.234
+  publicIP: 52.51.193.226
+  roles:
+  - bastion`
+
+	p := &Parameters{}
+	err := p.Parse(yamlContent)
+	valErrs := p.validateInventory()
+
+	assert.Nil(t, err, "Unexpected error during parsing")
+
+	// ensure no validation erros
+	assert.Equal(t, []error(nil), valErrs)
+
+	// ensure all vars are parse
+	assert.Equal(t, 5, len(p.Inventory))
+}
+
 func TestParametersMachines(t *testing.T) {
 	yamlContent := `cluster:
   machines:

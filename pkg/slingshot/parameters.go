@@ -8,9 +8,9 @@ import (
 )
 
 type Parameters struct {
-	Custom    map[string]string `yaml:"custom,omitempty"`
-	General   ParametersGeneral
-	Inventory []ParameterInventory
+	Custom    map[string]string    `yaml:"custom,omitempty"`
+	General   ParametersGeneral    `yaml:"general"`
+	Inventory []ParameterInventory `yaml:"inventory"`
 }
 
 func (p *Parameters) Parse(content string) error {
@@ -217,10 +217,10 @@ func (pA *ParametersAuthentication) Defaults() {
 }
 
 type ParameterInventory struct {
-	Name      *string
-	PublicIP  *string `yaml:"publicIP"`
-	PrivateIP *string `yaml:"privateIP"`
-	Roles     []string
+	Name      *string  `yaml:"name"`
+	PublicIP  *string  `yaml:"publicIP"`
+	PrivateIP *string  `yaml:"privateIP"`
+	Roles     []string `yaml:"roles"`
 }
 
 func (pI *ParameterInventory) Validate() (errs []error) {
@@ -228,7 +228,7 @@ func (pI *ParameterInventory) Validate() (errs []error) {
 		errs = append(errs, fmt.Errorf("Required PrivateIP field missing"))
 	}
 	if len(pI.Roles) < 1 {
-		errs = append(errs, fmt.Errorf("You need to specify at least on role"))
+		errs = append(errs, fmt.Errorf("You need to specify at least one role"))
 	}
 	return
 }

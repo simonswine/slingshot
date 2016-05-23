@@ -268,12 +268,18 @@ func (c *Cluster) apply() (errs []error) {
 	output, err := c.infrastructureProvider.RunCommand("apply", &paramsMainBytes)
 	if err != nil {
 		return []error{
-			fmt.Errorf("Error while running infratstructure provider: %s", err),
+			fmt.Errorf("Error while running infrastructure provider: %s", err),
 		}
 	}
 
 	// check and merge output from infrastructure apply
-	c.Parameters.Parse(string(output))
+	err = c.Parameters.Parse(string(output))
+	if err != nil {
+		return []error{
+			fmt.Errorf("Error while parsing infrastructure provider output: %s", err),
+		}
+	}
+
 	errs = append(errs, c.Parameters.Validate()...)
 	if len(errs) > 0 {
 		return errs
