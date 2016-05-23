@@ -66,13 +66,13 @@ func (pC *ParametersCluster) Defaults() {
 
 	masterMachines := ParameterMachine{}
 	masterMachines.Defaults()
-	masterRoles := []string{"masters"}
+	masterRoles := []string{"master"}
 	masterMachines.Roles = &masterRoles
 	masterMachines.Count = 1
 
 	workerMachines := ParameterMachine{}
 	workerMachines.Defaults()
-	workerRoles := []string{"workers"}
+	workerRoles := []string{"worker"}
 	workerMachines.Roles = &workerRoles
 	workerMachines.Count = 2
 	workerInstanceType := "t2.large"
