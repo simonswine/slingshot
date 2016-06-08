@@ -126,7 +126,7 @@ func FirstFileFromTar(reader io.Reader) (fileBody []byte, fileName string, err e
 		switch metaData.Typeflag {
 
 		case tar.TypeReg:
-			_, err = tarReader.Read(fileBody)
+			fileBody, err = ioutil.ReadAll(tarReader)
 			if err != nil {
 				return
 			}

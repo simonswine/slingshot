@@ -239,13 +239,17 @@ func (c *DockerCommand) Exec(execCommand []string, stdout io.Writer, stderr io.W
 
 func (c *DockerCommand) Output() (output []byte, err error) {
 	if c.config != nil && c.config.ResultFile != nil {
-		filePath := path.Join(
-			*c.workDir,
-			*c.config.ResultFile,
-		)
+		filePath := *c.config.ResultFile
 
-		c.log().Debugf("Read output from file '%s'", filePath)
-		return c.downloadFile(filePath)
+		var tarData []byte
+		tarData, err = c.ReadTar([]string{filePath})
+		if err != nil {
+			return
+		}
+		c.log().Debugf("Read output from file '%s' (length %d)", filePath, len(tarData))
+
+		output, _, err = utils.FirstFileFromTar(bytes.NewReader(tarData))
+		return
 	}
 	return
 }
