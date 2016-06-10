@@ -127,10 +127,11 @@ func (pM *ParameterMachine) Validate() (errs []error) {
 }
 
 type ParametersKubernetes struct {
-	Interface      *string `yaml:"interface,omitempty"`
-	MasterApiPort  int     `yaml:"masterApiPort"`
-	MasterApiUrl   string  `yaml:"masterApiUrl,omitempty"`
-	ServiceNetwork string  `yaml:"serviceNetwork"`
+	Interface      *string  `yaml:"interface,omitempty"`
+	MasterApiPort  int      `yaml:"masterApiPort,omitempty"`
+	MasterApiUrl   string   `yaml:"masterApiUrl,omitempty"`
+	MasterSan      []string `yaml:"masterSan,omitempty"`
+	ServiceNetwork string   `yaml:"serviceNetwork"`
 	Dns            struct {
 		Replicas   int
 		DomainName string `yaml:"domainName"`
