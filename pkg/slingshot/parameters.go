@@ -130,6 +130,7 @@ type ParametersKubernetes struct {
 	Interface      *string  `yaml:"interface,omitempty"`
 	MasterApiPort  int      `yaml:"masterApiPort,omitempty"`
 	MasterApiUrl   string   `yaml:"masterApiUrl,omitempty"`
+	Version        string   `yaml:"version,omitempty"`
 	MasterSan      []string `yaml:"masterSan,omitempty"`
 	ServiceNetwork string   `yaml:"serviceNetwork"`
 	Dns            struct {
