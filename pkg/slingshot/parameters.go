@@ -127,7 +127,6 @@ func (pM *ParameterMachine) Validate() (errs []error) {
 }
 
 type ParametersKubernetes struct {
-	Interface      *string  `yaml:"interface,omitempty"`
 	MasterApiPort  int      `yaml:"masterApiPort,omitempty"`
 	MasterApiUrl   string   `yaml:"masterApiUrl,omitempty"`
 	Version        string   `yaml:"version,omitempty"`
