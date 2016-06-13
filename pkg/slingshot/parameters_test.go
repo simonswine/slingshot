@@ -121,6 +121,7 @@ func TestParametersMachines(t *testing.T) {
 func TestParametersCluster(t *testing.T) {
 	yamlContent := `cluster:
   kubernetes:
+    cloudProvider: aws
     masterApiPort: 8443
     serviceNetwork: 10.240.0.0/16
     dns:
@@ -147,6 +148,7 @@ func TestParametersCluster(t *testing.T) {
 	// ensure no validation erros
 	assert.Equal(t, []error(nil), valErrs)
 
+	assert.Equal(t, "aws", p.Cluster.Kubernetes.CloudProvider)
 	assert.Equal(t, 8443, p.Cluster.Kubernetes.MasterApiPort)
 	assert.Equal(t, "10.240.0.0/16", p.Cluster.Kubernetes.ServiceNetwork)
 
