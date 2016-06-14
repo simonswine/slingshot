@@ -216,13 +216,14 @@ func (c *Cluster) Create(context *cli.Context) (errs []error) {
 	if err != nil {
 		errs = append(errs, err)
 	}
-	c.Parameters.General.Cluster.Name = clusterName
-	errs = append(errs, c.validateName()...)
 
 	errs = append(errs, c.createParameters(context)...)
 	if len(errs) > 0 {
 		return errs
 	}
+
+	c.Parameters.General.Cluster.Name = clusterName
+	errs = append(errs, c.validateName()...)
 
 	// read provider flags
 	for providerName, _ := range c.ProviderImageNames {
