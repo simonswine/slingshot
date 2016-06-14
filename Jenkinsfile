@@ -72,7 +72,7 @@ node('docker'){
         sh "./_build/slingshot-linux-amd64 cluster create -I jetstack/slingshot-ip-vagrant-coreos:canary -C jetstack/slingshot-cp-ansible-k8s-coreos:canary jenkins-1"
 
         // copy kubectl config over
-        sh "ssh -o \"UserKnownHostsFile /dev/null\" -o \"StrictHostKeyChecking no\" -i ~/.vagrant.d/insecure_private_key core@10.251.0.10 cat /etc/kubernetes/kubectl.kubeconfig > ~/.kube/config"
+        sh "ssh -o \"UserKnownHostsFile /dev/null\" -o \"StrictHostKeyChecking no\" -i ~/.vagrant.d/insecure_private_key core@10.251.0.10 cat /home/core/.kube/config > ~/.kube/config"
 
         // get node status
         sh "kubectl get nodes"
