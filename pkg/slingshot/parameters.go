@@ -57,8 +57,9 @@ func (pG *ParametersGeneral) Defaults() {
 }
 
 type ParametersCluster struct {
-	Kubernetes ParametersKubernetes
-	Machines   map[string]ParameterMachine
+	Name       string                      `yaml:"name"`
+	Kubernetes ParametersKubernetes        `yaml:"kubernetes":`
+	Machines   map[string]ParameterMachine `yaml:"machines"`
 }
 
 func (pC *ParametersCluster) Defaults() {

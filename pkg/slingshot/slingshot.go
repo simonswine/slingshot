@@ -64,6 +64,7 @@ func (s *Slingshot) loadClusters() {
 			if err != nil {
 				s.log().Warnf("Could not read cluster in '%s': %s", configPath, err)
 			}
+			c.Parameters.General.Cluster.Name = f.Name()
 
 			s.clusters = append(s.clusters, c)
 			s.log().Debugf("read cluster config file in '%s'", configPath)
@@ -73,7 +74,7 @@ func (s *Slingshot) loadClusters() {
 
 func (s *Slingshot) getClusterByName(name string) (*Cluster, error) {
 	for _, cluster := range s.clusters {
-		if cluster.Name == name {
+		if cluster.Name() == name {
 			return cluster, nil
 		}
 	}

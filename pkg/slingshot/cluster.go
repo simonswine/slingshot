@@ -15,7 +15,6 @@ import (
 )
 
 type Cluster struct {
-	Name                   string
 	Version                string
 	Parameters             *Parameters        `yaml:"parameters"`
 	ProviderImageNames     map[string]*string `yaml:"providerImageNames"`
@@ -92,23 +91,27 @@ func (c *Cluster) Validate() (errs []error) {
 	return
 }
 
+func (c *Cluster) Name() string {
+	return c.Parameters.General.Cluster.Name
+}
+
 func (c *Cluster) validateName() (errs []error) {
 
-	if existingC, err := c.slingshot.getClusterByName(c.Name); err == nil && existingC != c {
-		return []error{fmt.Errorf("cluster with the name '%s' already exists", c.Name)}
+	if existingC, err := c.slingshot.getClusterByName(c.Name()); err == nil && existingC != c {
+		return []error{fmt.Errorf("cluster with the name '%s' already exists", c.Name())}
 	}
 
-	if len(c.Name) == 0 {
+	if len(c.Name()) == 0 {
 		return []error{fmt.Errorf("empty cluster name not allowed")}
 	}
 
 	regExpName := "[a-z0-9-]+"
-	matched, err := regexp.MatchString(regExpName, c.Name)
+	matched, err := regexp.MatchString(regExpName, c.Name())
 	if err != nil {
 		return []error{err}
 	}
 	if !matched {
-		return []error{fmt.Errorf("cluster name '%s' did not match '%s'", c.Name, regExpName)}
+		return []error{fmt.Errorf("cluster name '%s' did not match '%s'", c.Name(), regExpName)}
 	}
 	return []error{}
 }
@@ -116,7 +119,7 @@ func (c *Cluster) validateName() (errs []error) {
 func (c *Cluster) configDirPath() string {
 	return path.Join(
 		c.slingshot.configDir,
-		c.Name,
+		c.Name(),
 	)
 }
 
@@ -213,7 +216,7 @@ func (c *Cluster) Create(context *cli.Context) (errs []error) {
 	if err != nil {
 		errs = append(errs, err)
 	}
-	c.Name = clusterName
+	c.Parameters.General.Cluster.Name = clusterName
 	errs = append(errs, c.validateName()...)
 
 	errs = append(errs, c.createParameters(context)...)
