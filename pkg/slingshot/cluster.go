@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 
@@ -277,6 +278,32 @@ func (c *Cluster) destroy() (errs []error) {
 	}
 
 	return
+}
+
+func (c *Cluster) Kubectl(context *cli.Context) {
+	binary, err := exec.LookPath("kubectl")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cmd := exec.Command(binary, context.Args()[1:]...)
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("KUBECONFIG=%s", path.Join(c.configDirPath(), "config/kubeconfig")))
+	cmd.Env = env
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func (c *Cluster) Apply(context *cli.Context) (errs []error) {

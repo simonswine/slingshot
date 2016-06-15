@@ -142,6 +142,42 @@ func (s *Slingshot) readClusterName(context *cli.Context) (string, error) {
 	return strings.ToLower(context.Args().First()), nil
 }
 
+func (s *Slingshot) clusterKubectlAction(context *cli.Context) {
+	log.SetLevel(log.ErrorLevel)
+
+	s.Init()
+
+	cName, err := s.readClusterName(context)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	c, err := s.getClusterByName(cName)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	c.Kubectl(context)
+}
+
+func (s *Slingshot) clusterSshAction(context *cli.Context) {
+	log.SetLevel(log.ErrorLevel)
+
+	s.Init()
+
+	cName, err := s.readClusterName(context)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	c, err := s.getClusterByName(cName)
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	c.Ssh(context)
+}
+
 func (s *Slingshot) clusterApplyAction(context *cli.Context) {
 	s.Init()
 
@@ -257,6 +293,23 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 			Name:   "list",
 			Usage:  "list existing clusters",
 			Action: s.clusterListAction,
+		},
+		{
+			Name:            "kubectl",
+			Usage:           "shell out to kubectl",
+			Action:          s.clusterKubectlAction,
+			SkipFlagParsing: true,
+		},
+		{
+			Name:   "nodes",
+			Usage:  "list nodes in a cluster",
+			Action: s.unimplementedAction,
+		},
+		{
+			Name:            "ssh",
+			Usage:           "ssh into a node of the cluster",
+			Action:          s.clusterSshAction,
+			SkipFlagParsing: true,
 		},
 	}
 }
