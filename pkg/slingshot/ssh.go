@@ -9,79 +9,40 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"gopkg.in/yaml.v2"
 )
 
 type SshConfig struct {
 	ConfigPath     string
 	IdentityPath   string
 	KnownHostsPath string
-	Hosts          map[string][]ParameterInventory
-}
-
-func increment(i int) int {
-	return i + 1
+	Inventory      []ParameterInventory
 }
 
 func (c *Cluster) sshConfig() string {
-	inventoryString := `
-- name: i-d45f3658
-  publicIP: null
-  privateIP: 172.20.129.5
-  roles:
-  - master
-- name: i-bb5f3637
-  publicIP: null
-  privateIP: 172.20.129.208
-  roles:
-  - worker
-- name: i-ba5f3636
-  publicIP: null
-  privateIP: 172.20.129.207
-  roles:
-  - worker
-- name: i-0453c578670603810
-  publicIP: 52.17.26.95
-  privateIP: 172.20.3.97
-  roles:
-  - bastion`
-	config := SshConfig{
-		ConfigPath: path.Join(
-			c.configDirPath(),
-			"config/ssh-config",
-		),
-		KnownHostsPath: path.Join(
-			c.configDirPath(),
-			"config/ssh-known-hosts",
-		),
-		IdentityPath: path.Join(
-			c.configDirPath(),
-			"config/id_slingshot",
-		),
-		Hosts: make(map[string][]ParameterInventory),
-	}
-
-	inventory := []ParameterInventory{}
-	err := yaml.Unmarshal([]byte(inventoryString), &inventory)
+	inventory, err := c.Inventory()
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
-	for _, host := range inventory {
-		for _, role := range host.Roles {
-			if _, ok := config.Hosts[role]; !ok {
-				config.Hosts[role] = []ParameterInventory{host}
-			} else {
-				config.Hosts[role] = append(config.Hosts[role], host)
-			}
-		}
+	config := SshConfig{
+		ConfigPath: path.Join(
+			c.configDirPath(),
+			SlingshotSSHConfigFileName,
+		),
+		KnownHostsPath: path.Join(
+			c.configDirPath(),
+			SlingshotSSHKnownHostsFileName,
+		),
+		IdentityPath: path.Join(
+			c.configDirPath(),
+			SlingshotSSHIdentityFileName,
+		),
+		Inventory: inventory,
 	}
-	funcMap := template.FuncMap{"increment": increment}
 
-	tmpl, err := template.New("ssh-config").Funcs(funcMap).Parse(`{{$config := . -}}
-{{range $role, $hosts := $config.Hosts -}}
-{{range $hostIndex, $host := $hosts -}}
-Host {{$host.Name}} {{$role}}{{if gt (len $hosts) 1}}{{increment $hostIndex}}{{end}}
+	tmpl, err := template.New("ssh-config").Parse(`{{$config := . -}}
+{{range $hostIndex, $host := $config.Inventory -}}
+Host {{$host.Name}}{{range $host.Aliases}} {{.}}{{end}}
 {{- if $host.PublicIP}}
     Hostname {{$host.PublicIP}}
 {{- else}}
@@ -94,7 +55,6 @@ Host {{$host.Name}} {{$role}}{{if gt (len $hosts) 1}}{{increment $hostIndex}}{{e
     User core
     StrictHostKeyChecking no
 
-{{end -}}
 {{end -}}`)
 	if err != nil {
 		log.Fatal(err)

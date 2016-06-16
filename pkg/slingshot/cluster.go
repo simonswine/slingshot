@@ -131,24 +131,71 @@ func (c *Cluster) configFilePath() string {
 	)
 }
 
+func (c *Cluster) inventoryFilePath() string {
+	return path.Join(
+		c.configDirPath(),
+		SlingshotInventoryFileName,
+	)
+}
+
+func (c *Cluster) kubectlFilePath() string {
+	return path.Join(
+		c.configDirPath(),
+		SlingshotKubectlConfigFileName,
+	)
+}
+
 func (c *Cluster) WriteConfig() error {
+	return c.writeYaml(
+		c.configFilePath(),
+		c,
+	)
+}
+
+func (c *Cluster) WriteInventory() error {
+	return c.writeYaml(
+		c.inventoryFilePath(),
+		c.Parameters.Inventory,
+	)
+}
+
+func (c *Cluster) Inventory() (inventory []ParameterInventory, err error) {
+
+	reader, err := os.Open(c.inventoryFilePath())
+	if err != nil {
+		return
+	}
+
+	yamlData, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return
+	}
+
+	err = yaml.Unmarshal(yamlData, &inventory)
+	return
+}
+
+func (c *Cluster) writeFile(path string, body []byte) error {
 	if err := utils.EnsureDirectory(c.configDirPath()); err != nil {
 		return err
 	}
 
-	yamlContents, err := yaml.Marshal(c)
+	err := ioutil.WriteFile(path, body, 0600)
 	if err != nil {
 		return err
 	}
 
-	ioutil.WriteFile(c.configFilePath(), yamlContents, 0600)
-	if err != nil {
-		return err
-	}
-
-	c.log().Infof("wrote cluster config to '%s'", c.configFilePath())
-
+	c.log().Infof("wrote to '%s'", path)
 	return nil
+}
+
+func (c *Cluster) writeYaml(path string, obj interface{}) error {
+	yamlContents, err := yaml.Marshal(obj)
+	if err != nil {
+		return err
+	}
+
+	return c.writeFile(path, yamlContents)
 }
 
 func (c *Cluster) log() *log.Entry {
@@ -288,7 +335,7 @@ func (c *Cluster) Kubectl(context *cli.Context) {
 
 	cmd := exec.Command(binary, context.Args()[1:]...)
 	env := os.Environ()
-	env = append(env, fmt.Sprintf("KUBECONFIG=%s", path.Join(c.configDirPath(), "config/kubeconfig")))
+	env = append(env, fmt.Sprintf("KUBECONFIG=%s", c.kubectlFilePath()))
 	cmd.Env = env
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -338,6 +385,14 @@ func (c *Cluster) apply() (errs []error) {
 	if err != nil {
 		return []error{
 			fmt.Errorf("Error while parsing infrastructure provider output: %s", err),
+		}
+	}
+
+	// store inventory
+	c.WriteInventory()
+	if err != nil {
+		return []error{
+			fmt.Errorf("Error while storing inventory: %s", err),
 		}
 	}
 

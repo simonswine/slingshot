@@ -15,6 +15,11 @@ import (
 )
 
 const SlingshotClusterFileName = "cluster.yaml"
+const SlingshotInventoryFileName = "inventory.yaml"
+const SlingshotSSHConfigFileName = "config/ssh-config"
+const SlingshotSSHIdentityFileName = "config/id_slingshot"
+const SlingshotSSHKnownHostsFileName = "config/ssh-known-hosts"
+const SlingshotKubectlConfigFileName = "config/kubectl"
 
 type Slingshot struct {
 	App          *cli.App
