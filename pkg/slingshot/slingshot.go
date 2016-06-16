@@ -72,6 +72,17 @@ func (s *Slingshot) loadClusters() {
 	}
 }
 
+func (s *Slingshot) GetCluster(context *cli.Context) (*Cluster, error) {
+	s.Init()
+
+	cName, err := s.readClusterName(context)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.getClusterByName(cName)
+}
+
 func (s *Slingshot) getClusterByName(name string) (*Cluster, error) {
 	for _, cluster := range s.clusters {
 		if cluster.Name() == name {
@@ -145,14 +156,7 @@ func (s *Slingshot) readClusterName(context *cli.Context) (string, error) {
 func (s *Slingshot) clusterKubectlAction(context *cli.Context) {
 	log.SetLevel(log.ErrorLevel)
 
-	s.Init()
-
-	cName, err := s.readClusterName(context)
-	if err != nil {
-		s.log().Fatal(err)
-	}
-
-	c, err := s.getClusterByName(cName)
+	c, err := s.GetCluster(context)
 	if err != nil {
 		s.log().Fatal(err)
 	}
@@ -163,14 +167,7 @@ func (s *Slingshot) clusterKubectlAction(context *cli.Context) {
 func (s *Slingshot) clusterSshAction(context *cli.Context) {
 	log.SetLevel(log.ErrorLevel)
 
-	s.Init()
-
-	cName, err := s.readClusterName(context)
-	if err != nil {
-		s.log().Fatal(err)
-	}
-
-	c, err := s.getClusterByName(cName)
+	c, err := s.GetCluster(context)
 	if err != nil {
 		s.log().Fatal(err)
 	}
@@ -178,15 +175,53 @@ func (s *Slingshot) clusterSshAction(context *cli.Context) {
 	c.Ssh(context)
 }
 
-func (s *Slingshot) clusterApplyAction(context *cli.Context) {
-	s.Init()
+func (s *Slingshot) clusterNodesAction(context *cli.Context) {
+	log.SetLevel(log.ErrorLevel)
 
-	cName, err := s.readClusterName(context)
+	c, err := s.GetCluster(context)
 	if err != nil {
 		s.log().Fatal(err)
 	}
 
-	c, err := s.getClusterByName(cName)
+	inventory, err := c.Inventory()
+	if err != nil {
+		s.log().Fatal(err)
+	}
+
+	fmt.Printf("Nodes in cluster %s\n", c.Name())
+	w := new(tabwriter.Writer)
+
+	// Format in tab-separated columns with a tab stop of 8.
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	fmt.Fprintln(w, "Name\tAliases\tRoles\tPrivate IP\tPublic IP")
+
+	for _, host := range inventory {
+		privateIp := ""
+		if host.PrivateIP != nil {
+			privateIp = *host.PrivateIP
+		}
+		publicIp := ""
+		if host.PublicIP != nil {
+			publicIp = *host.PublicIP
+		}
+		roles := strings.Join(host.Roles, ",")
+		aliases := strings.Join(host.Aliases, ",")
+		fmt.Fprintln(w, fmt.Sprintf(
+			"%s\t%s\t%s\t%s\t%s",
+			*host.Name,
+			aliases,
+			roles,
+			privateIp,
+			publicIp,
+		))
+	}
+
+	fmt.Fprintln(w)
+	w.Flush()
+}
+
+func (s *Slingshot) clusterApplyAction(context *cli.Context) {
+	c, err := s.GetCluster(context)
 	if err != nil {
 		s.log().Fatal(err)
 	}
@@ -201,14 +236,7 @@ func (s *Slingshot) clusterApplyAction(context *cli.Context) {
 }
 
 func (s *Slingshot) clusterDestroyAction(context *cli.Context) {
-	s.Init()
-
-	cName, err := s.readClusterName(context)
-	if err != nil {
-		s.log().Fatal(err)
-	}
-
-	c, err := s.getClusterByName(cName)
+	c, err := s.GetCluster(context)
 	if err != nil {
 		s.log().Fatal(err)
 	}
@@ -223,6 +251,7 @@ func (s *Slingshot) clusterDestroyAction(context *cli.Context) {
 }
 
 func (s *Slingshot) clusterListAction(context *cli.Context) {
+	log.SetLevel(log.ErrorLevel)
 	s.Init()
 
 	w := new(tabwriter.Writer)
@@ -239,7 +268,7 @@ func (s *Slingshot) clusterListAction(context *cli.Context) {
 		}
 		fmt.Fprintln(w, fmt.Sprintf(
 			"%s\t%s\t%s",
-			cluster.Name,
+			cluster.Name(),
 			*infra,
 			*config,
 		))
@@ -303,7 +332,7 @@ func (s *Slingshot) clusterCommands() []cli.Command {
 		{
 			Name:   "nodes",
 			Usage:  "list nodes in a cluster",
-			Action: s.unimplementedAction,
+			Action: s.clusterNodesAction,
 		},
 		{
 			Name:            "ssh",
