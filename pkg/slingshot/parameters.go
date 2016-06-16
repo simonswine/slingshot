@@ -15,6 +15,7 @@ type Parameters struct {
 
 func (p *Parameters) Parse(content string) error {
 	err := yaml.Unmarshal([]byte(content), p)
+	p.addInventoryAliases()
 	return err
 }
 
@@ -22,6 +23,40 @@ func (p *Parameters) Validate() (errs []error) {
 	errs = append(errs, p.General.Validate()...)
 	errs = append(errs, p.validateInventory()...)
 	return
+}
+
+func (p *Parameters) addInventoryAliases() {
+	rolesCount := make(map[string]int)
+	rolesSize := make(map[string]int)
+
+	for index, _ := range p.Inventory {
+		for _, role := range p.Inventory[index].Roles {
+			if _, ok := rolesSize[role]; !ok {
+				rolesSize[role] = 1
+			} else {
+				rolesSize[role] += 1
+			}
+		}
+	}
+
+	for index, _ := range p.Inventory {
+		for _, role := range p.Inventory[index].Roles {
+			if _, ok := rolesCount[role]; !ok {
+				rolesCount[role] = 1
+			} else {
+				rolesCount[role] += 1
+			}
+			alias := role
+			if rolesSize[role] > 1 {
+				alias = fmt.Sprintf("%s%d", role, rolesCount[role])
+			}
+			p.Inventory[index].Aliases = append(
+				p.Inventory[index].Aliases,
+				alias,
+			)
+		}
+	}
+
 }
 
 func (p *Parameters) validateInventory() (errs []error) {
@@ -224,7 +259,8 @@ type ParameterInventory struct {
 	Name      *string  `yaml:"name"`
 	PublicIP  *string  `yaml:"publicIP"`
 	PrivateIP *string  `yaml:"privateIP"`
-	Roles     []string `yaml:"roles"`
+	Roles     []string `yaml:"roles,omitempty"`
+	Aliases   []string `yaml:"aliases,omitempty"`
 }
 
 func (pI *ParameterInventory) Validate() (errs []error) {

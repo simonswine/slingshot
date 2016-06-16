@@ -34,6 +34,36 @@ func TestParametersInventory(t *testing.T) {
 	assert.Equal(t, 2, len(p.Inventory))
 }
 
+func TestParametersInventory_Aliases(t *testing.T) {
+
+	yamlContent := `inventory:
+  - name: instance1
+    hostname: masters-1.k8s.den
+    roles:
+     - master
+    privateIP: 192.168.51.51
+    publicIP: 192.168.51.51
+  - name: instance2
+    roles:
+      - worker
+    privateIP: 192.168.51.52
+    publicIP: 192.168.51.52
+  - name: instance3
+    roles:
+      - worker
+    privateIP: 192.168.51.53
+    publicIP: 192.168.51.53`
+
+	p := &Parameters{}
+	err := p.Parse(yamlContent)
+	assert.Nil(t, err, "Unexpected error during parsing")
+
+	// ensure no validation erros
+	assert.Equal(t, p.Inventory[0].Aliases, []string{"master"})
+	assert.Equal(t, p.Inventory[1].Aliases, []string{"worker1"})
+	assert.Equal(t, p.Inventory[2].Aliases, []string{"worker2"})
+}
+
 func TestParametersInventory_2(t *testing.T) {
 
 	yamlContent := `inventory:
