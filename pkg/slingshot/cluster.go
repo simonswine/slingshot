@@ -1,6 +1,10 @@
 package slingshot
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -232,24 +236,22 @@ func (c *Cluster) createParameters(context *cli.Context) []error {
 		}
 	}
 
-	sshKeyPath, err := utils.VagrantKeyPath()
+	key, err := rsa.GenerateKey(
+		rand.Reader,
+		2048,
+	)
 	if err != nil {
-		return []error{
-			fmt.Errorf("Error while determining vagrant ssh key path: %s", err),
-		}
-	}
-	if context.IsSet("ssh-key") {
-		sshKeyPath = context.String("ssh-key")
-	}
-	sshKey, err := ioutil.ReadFile(sshKeyPath)
-	if err != nil {
-		return []error{
-			fmt.Errorf("Error while reading ssh key from '%s':  %s", sshKeyPath, err),
-		}
+		return []error{fmt.Errorf("Error generating ssh-key: %s", err)}
 	}
 
-	sshKeyString := string(sshKey)
-	paramsMain.General.Authentication.Ssh.PrivateKey = &sshKeyString
+	pemKey := pem.Block{
+		Type:    "RSA PRIVATE KEY",
+		Headers: nil,
+		Bytes:   x509.MarshalPKCS1PrivateKey(key),
+	}
+	stringKey := string(pem.EncodeToMemory(&pemKey))
+
+	paramsMain.General.Authentication.Ssh.PrivateKey = &stringKey
 	errs := paramsMain.Validate()
 	if len(errs) == 0 {
 		c.Parameters = paramsMain

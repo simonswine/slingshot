@@ -1,7 +1,7 @@
 package slingshot
 
 import (
-	"io/ioutil"
+	"bytes"
 	"os"
 	"os/exec"
 	"path"
