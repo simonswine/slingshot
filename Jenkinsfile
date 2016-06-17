@@ -71,15 +71,14 @@ node('docker'){
 
         sh "./_build/slingshot-linux-amd64 cluster create -I jetstack/slingshot-ip-vagrant-coreos:canary -C jetstack/slingshot-cp-ansible-k8s-coreos:canary jenkins-1"
 
-        // copy kubectl config over
-        sh "ssh -o \"UserKnownHostsFile /dev/null\" -o \"StrictHostKeyChecking no\" -i ~/.vagrant.d/insecure_private_key core@10.251.0.10 cat /home/core/.kube/config > ~/.kube/config"
-
         // get node status
-        sh "kubectl get nodes"
+        sh "./_build/slingshot-linux-amd64 cluster ssh jenkins-1 master kubectl get nodes"
 
         // schedule a pod
-        sh "kubectl run --attach --image busybox --restart=Never testpod ping -- -c 10 8.8.4.4"
+        sh "./_build/slingshot-linux-amd64 cluster ssh jenkins-1 master kubectl run --attach --image busybox --restart=Never testpod ping -- -c 10 8.8.4.4"
 
+        // destroy cluster
+        sh "./_build/slingshot-linux-amd64 cluster destroy jenkins-1"
 
     }
     stage 'Cleanup virtual box instances'
