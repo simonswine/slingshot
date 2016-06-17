@@ -59,22 +59,25 @@ Host {{$host.Name}}{{range $host.Aliases}} {{.}}{{end}}
 	if err != nil {
 		log.Fatal(err)
 	}
-	f, err := os.OpenFile(config.ConfigPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		log.Fatal("error opening ssh-config file: ", err)
-	}
-	defer f.Close()
 
-	err = tmpl.Execute(f, config)
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, config)
+	if err != nil {
+		log.Fatal("error executing ssh-config template: ", err)
+	}
+
+	err = c.writeFile(
+		config.ConfigPath,
+		buf.Bytes(),
+	)
 	if err != nil {
 		log.Fatal("error writing ssh-config file: ", err)
 	}
 
 	// write ssh id out
-	err = ioutil.WriteFile(
+	err = c.writeFile(
 		config.IdentityPath,
 		[]byte(*c.Parameters.General.Authentication.Ssh.PrivateKey),
-		0600,
 	)
 	if err != nil {
 		log.Fatal("error writing ssh-id file: ", err)

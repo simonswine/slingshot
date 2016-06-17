@@ -179,17 +179,17 @@ func (c *Cluster) Inventory() (inventory []ParameterInventory, err error) {
 	return
 }
 
-func (c *Cluster) writeFile(path string, body []byte) error {
-	if err := utils.EnsureDirectory(c.configDirPath()); err != nil {
+func (c *Cluster) writeFile(filePath string, body []byte) error {
+	if err := utils.EnsureDirectory(path.Dir(filePath)); err != nil {
 		return err
 	}
 
-	err := ioutil.WriteFile(path, body, 0600)
+	err := ioutil.WriteFile(filePath, body, 0600)
 	if err != nil {
 		return err
 	}
 
-	c.log().Infof("wrote to '%s'", path)
+	c.log().Infof("wrote to '%s'", filePath)
 	return nil
 }
 
