@@ -72,10 +72,10 @@ node('docker'){
         sh "./_build/slingshot-linux-amd64 cluster create -I jetstack/slingshot-ip-vagrant-coreos:canary -C jetstack/slingshot-cp-ansible-k8s-coreos:canary jenkins-1"
 
         // get node status
-        sh "./_build/slingshot-linux-amd64 cluster ssh jenkins-1 master kubectl get nodes"
+        sh "./_build/slingshot-linux-amd64 cluster ssh jenkins-1 master /opt/bin/kubectl get nodes"
 
         // schedule a pod
-        sh "./_build/slingshot-linux-amd64 cluster ssh jenkins-1 master kubectl run --attach --image busybox --restart=Never testpod ping -- -c 10 8.8.4.4"
+        sh "./_build/slingshot-linux-amd64 cluster ssh jenkins-1 master /opt/bin/kubectl run --attach --image busybox --restart=Never testpod ping -- -c 10 8.8.4.4"
 
         // destroy cluster
         sh "./_build/slingshot-linux-amd64 cluster destroy jenkins-1"
