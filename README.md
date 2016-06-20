@@ -31,9 +31,10 @@ custom:
   aws_region: eu-west-1
   aws_secret_key: #AWS_SECRET#
   aws_zones: eu-west-1a
-cluster:
-  kubernetes:
-    version: 1.3.0-beta.1
+general:
+  cluster:
+    kubernetes:
+      version: 1.3.0-beta.1
 EOF
 ```
 
