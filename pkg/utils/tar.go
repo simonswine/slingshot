@@ -16,6 +16,32 @@ type TarObject struct {
 	Body   *[]byte
 }
 
+// untar into list of objcts
+func ReadTarIntoListofObjects(reader io.Reader) (objects []TarObject, err error) {
+	tarReader := tar.NewReader(reader)
+	for {
+		obj := TarObject{}
+		obj.Header, err = tarReader.Next()
+		if err != nil {
+			if err == io.EOF {
+				return objects, nil
+			} else {
+				return
+			}
+		}
+		if obj.Header.Typeflag == tar.TypeReg {
+			var fileBody []byte
+			fileBody, err = ioutil.ReadAll(tarReader)
+			if err != nil {
+				return
+			}
+			obj.Body = &fileBody
+		}
+		objects = append(objects, obj)
+	}
+	return
+}
+
 // tar a list of files and directories
 func TarListOfObjects(objects []TarObject) (tarData []byte, err error) {
 

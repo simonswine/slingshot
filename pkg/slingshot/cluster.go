@@ -335,6 +335,34 @@ func (c *Cluster) Kubectl(context *cli.Context) {
 		log.Fatal(err)
 	}
 
+	// TODO: get path from provider
+	filePath := path.Join(
+		c.configDirPath(),
+		"provider-config.tar",
+	)
+	fileReader, err := os.Open(filePath)
+	if err != nil {
+		log.Fatalf("Error reading state file %s: %s", filePath, err)
+	}
+	tarObjects, err := utils.ReadTarIntoListofObjects(fileReader)
+	if err != nil {
+		log.Fatalf("Error reading tar: %s", err)
+	}
+
+	found := false
+	for _, obj := range tarObjects {
+		if obj.Header.Name == "ssl_ca/.kubeconfig" {
+			c.writeFile(
+				c.kubectlFilePath(),
+				*obj.Body,
+			)
+			found = true
+		}
+	}
+	if !found {
+		log.Fatal("Not able to find kubeconfig in state file")
+	}
+
 	cmd := exec.Command(binary, context.Args()[1:]...)
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("KUBECONFIG=%s", c.kubectlFilePath()))

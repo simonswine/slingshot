@@ -163,13 +163,14 @@ func (pM *ParameterMachine) Validate() (errs []error) {
 }
 
 type ParametersKubernetes struct {
-	CloudProvider  string   `yaml:"cloudProvider,omitempty"`
-	MasterApiPort  int      `yaml:"masterApiPort,omitempty"`
-	MasterApiUrl   string   `yaml:"masterApiUrl,omitempty"`
-	Version        string   `yaml:"version,omitempty"`
-	MasterSan      []string `yaml:"masterSan,omitempty"`
-	ServiceNetwork string   `yaml:"serviceNetwork"`
-	Dns            struct {
+	CloudProvider        string   `yaml:"cloudProvider,omitempty"`
+	MasterApiPort        int      `yaml:"masterApiPort,omitempty"`
+	MasterApiUrl         string   `yaml:"masterApiUrl,omitempty"`
+	MasterApiUrlExternal string   `yaml:"masterApiUrlExternal,omitempty"`
+	Version              string   `yaml:"version,omitempty"`
+	MasterSan            []string `yaml:"masterSan,omitempty"`
+	ServiceNetwork       string   `yaml:"serviceNetwork"`
+	Dns                  struct {
 		Replicas   int
 		DomainName string `yaml:"domainName"`
 	}
